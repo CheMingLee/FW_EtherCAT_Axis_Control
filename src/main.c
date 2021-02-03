@@ -5,9 +5,12 @@
  *      Author: cmleex
  */
 
+#include "setting.h"
 
 int main()
 {
+	SetupInterruptSystem();
+
 	while(1)
 	{
 
