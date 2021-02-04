@@ -16,7 +16,7 @@ void SetupInterruptSystem()
 	//connect to the hardware
 	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, (Xil_ExceptionHandler)XScuGic_InterruptHandler, GicInstancePtr);
 
-	XScuGic_Connect(GicInstancePtr, ECM_INTR_ID, (Xil_ExceptionHandler)ECM_intr_Handler, (void *)NULL);
+	XScuGic_Connect(GicInstancePtr, ECM_INTR_ID, (Xil_ExceptionHandler)ECM_intr_Handler, (void *)&Intc);
 
 	XScuGic_Enable(GicInstancePtr, ECM_INTR_ID);
 
@@ -24,9 +24,9 @@ void SetupInterruptSystem()
 	Xil_ExceptionEnableMask(XIL_EXCEPTION_IRQ);
 }
 
-void ECM_intr_Handler()
+void ECM_intr_Handler(void *CallBackRef)
 {
 	// to do
-    
-    ECM_INTR_RESET = 1;
+
+	Xil_Out32(ECM_INTR_RESET, 1);
 }
