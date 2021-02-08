@@ -13,7 +13,7 @@ int main()
 
 	while(1)
 	{
-
+		GetAppCmd();
 	}
 
 	return 0;

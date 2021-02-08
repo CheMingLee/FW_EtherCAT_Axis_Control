@@ -60,7 +60,10 @@ void GetAppCmd()
 		{
 			case CMD_SET_DATASIZE:
 			{
-				memcpy((void *)ECM_ADDR_DATA_BYTE, pData, usSize);
+				u32 uSizeBuf;
+
+				memcpy(&uSizeBuf, pData, 4);
+				Xil_Out32(ECM_ADDR_DATA_BYTE, uSizeBuf);
 				break;
 			}
 			case CMD_SET_TXDATA:
@@ -85,7 +88,10 @@ void GetAppCmd()
 			}
 			case CMD_GET_RXDATA:
 			{
-				memcpy(pData, (void *)ECM_ADDR_DATA_IN, usSize);
+				u32 uSizeBuf;
+				
+				memcpy(&uSizeBuf, pData, usSize);
+				memcpy(pData, (void *)ECM_ADDR_DATA_IN, uSizeBuf);
 				CmdGetToApp(uCmd, pData, usSize);
 				SetFlagOutOne();
 				break;
