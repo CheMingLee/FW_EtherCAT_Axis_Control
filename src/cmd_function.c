@@ -42,6 +42,13 @@ void SetFlagOutOne()
 	Xil_Out32(IO_ADDR_BRAM_IN_FLAG, uFlag);
 }
 
+void CmdGetToApp(u16 usAck, u16 usSize)
+{
+	Xil_Out32(IO_ADDR_BRAM_OUT_SIZE, usSize+4);
+	Xil_Out16(IO_ADDR_BRAM_OUT_ACK, usAck);
+	Xil_Out16(IO_ADDR_BRAM_OUT_ACK_SIZE, usSize);
+}
+
 /*************************************************************************/
 
 void GetAppCmd()
@@ -68,7 +75,15 @@ void GetAppCmd()
 			}
 			case CMD_SET_TXDATA:
 			{
-				memcpy((void *)ECM_ADDR_DATA_OUT, pData, usSize);
+				// memcpy((void *)ECM_ADDR_DATA_OUT, pData, usSize);
+				int iOffset = 0;
+
+				do
+				{
+					Xil_Out8(ECM_ADDR_DATA_OUT + iOffset, *((u8 *)(pData + iOffset)));
+					usSize -= 1;
+					iOffset += 1;
+				} while (usSize > 0);
 				break;
 			}
 			case CMD_SET_SEND:
@@ -81,18 +96,28 @@ void GetAppCmd()
 				u32 uBusyBuf;
 				
 				uBusyBuf = Xil_In32(ECM_ADDR_BUSY);
-				memcpy(pData, &uBusyBuf, sizeof(uBusyBuf));
-				CmdGetToApp(uCmd, pData, usSize);
+				CmdGetToApp(uCmd, 4);
+				Xil_Out32(IO_ADDR_BRAM_OUT_DATA, uBusyBuf);
 				SetFlagOutOne();
 				break;
 			}
 			case CMD_GET_RXDATA:
 			{
+				u8 u8Data;
 				u32 uSizeBuf;
+				int iOffset = 0;
 				
 				memcpy(&uSizeBuf, pData, usSize);
-				memcpy(pData, (void *)ECM_ADDR_DATA_IN, uSizeBuf);
-				CmdGetToApp(uCmd, pData, usSize);
+				usSize = (u16)uSizeBuf;
+				CmdGetToApp(uCmd, usSize);
+				
+				do
+				{
+					u8Data = Xil_In8(ECM_ADDR_DATA_IN + iOffset);
+					Xil_Out8(IO_ADDR_BRAM_OUT_DATA + iOffset, u8Data);
+					usSize -= 1;
+					iOffset += 1;
+				} while (usSize > 0);
 				SetFlagOutOne();
 				break;
 			}
@@ -103,16 +128,6 @@ void GetAppCmd()
 		}
 		SetFlagInZero();
 	}
-}
-
-/*************************************************************************/
-
-void CmdGetToApp(u16 usAck, char *pData, u16 usSize)
-{
-	Xil_Out32(IO_ADDR_BRAM_OUT_SIZE, usSize+4);
-	Xil_Out16(IO_ADDR_BRAM_OUT_ACK, usAck);
-	Xil_Out16(IO_ADDR_BRAM_OUT_ACK_SIZE, usSize);
-	memcpy((void *)IO_ADDR_BRAM_OUT_DATA, pData, usSize);
 }
 
 /*************************************************************************/
