@@ -2,6 +2,8 @@
 
 XScuGic Intc; //GIC
 
+extern MOTION_PARAMS g_Motion_Params[2];
+
 void ECM_intr_Handler(void *CallBackRef)
 {
 	// to do

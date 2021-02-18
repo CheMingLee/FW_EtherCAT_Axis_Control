@@ -7,6 +7,8 @@
 
 #include "setting.h"
 
+MOTION_PARAMS g_Motion_Params[2];
+
 int main()
 {
 	SetupInterruptSystem();

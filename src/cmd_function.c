@@ -1,5 +1,7 @@
 #include "setting.h"
 
+extern MOTION_PARAMS g_Motion_Params[2];
+
 /*************************************************************************/
 
 bool CheckFlag()
