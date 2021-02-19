@@ -59,19 +59,21 @@ typedef struct ECM_PACK spi_ret_package_t{
 } SPI_RET_PACKAGE_T;
 ECM_PACK_END
 
-// Motion Params
+// Params structure
 typedef struct motion_params{
-	u32 m_uMode;
-	double m_dTarPos;
 	double m_dJogSpeed;
 	double m_dMotionSpeed;
 	double m_dComeHomeSpeed;
 	double m_dLeftHomeSpeed;
 	double m_dJagAcc;
 	double m_dMotionAcc;
-	double m_dComeHomeAcc;
-	double m_dLeftHomeAcc;
+	double m_dHomeAcc;
+} MOTION_PARAMS;
+
+typedef struct position_params{
+	u32 m_uMode;
+	double m_dTarPos;
 	double m_dCmdPos;
 	double m_dCurPos;
 	u32 m_uInput;
-} MOTION_PARAMS;
+} POSITION_PARAMS;

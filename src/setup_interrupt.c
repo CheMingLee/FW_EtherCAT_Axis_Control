@@ -6,8 +6,19 @@ extern MOTION_PARAMS g_Motion_Params[2];
 
 void ECM_intr_Handler(void *CallBackRef)
 {
-	// to do
-
+	// for (size_t i = 0; i < count; i++)
+	// {
+	// 	switch (expression)
+	// 	{
+	// 	case /* constant-expression */:
+	// 		/* code */
+	// 		break;
+		
+	// 	default:
+	// 		break;
+	// 	}
+	// }
+	
 	Xil_Out32(ECM_INTR_RESET, 1);
 }
 
