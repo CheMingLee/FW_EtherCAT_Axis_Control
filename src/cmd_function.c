@@ -1,7 +1,5 @@
 #include "setting.h"
 
-extern MOTION_PARAMS g_Motion_Params[2];
-
 /*************************************************************************/
 
 bool CheckFlag()
@@ -57,15 +55,15 @@ void GetAppCmd()
 {
 	if (CheckFlag())
 	{
-		u16 uCmd;
+		u16 usCmd;
 		u16 usSize;
 		char pData[256];
 
-		uCmd = Xil_In16(IO_ADDR_BRAM_IN_CMD);
+		usCmd = Xil_In16(IO_ADDR_BRAM_IN_CMD);
 		usSize = Xil_In16(IO_ADDR_BRAM_IN_CMD_SIZE);
 		memcpy(pData, (void *)IO_ADDR_BRAM_IN_DATA, usSize);
 
-		switch (uCmd)
+		switch (usCmd)
 		{
 			case CMD_SET_DATASIZE:
 			{
@@ -77,7 +75,6 @@ void GetAppCmd()
 			}
 			case CMD_SET_TXDATA:
 			{
-				// memcpy((void *)ECM_ADDR_DATA_OUT, pData, usSize);
 				int iOffset = 0;
 
 				do
@@ -98,7 +95,7 @@ void GetAppCmd()
 				u32 uBusyBuf;
 				
 				uBusyBuf = Xil_In32(ECM_ADDR_BUSY);
-				CmdGetToApp(uCmd, 4);
+				CmdGetToApp(usCmd, 4);
 				Xil_Out32(IO_ADDR_BRAM_OUT_DATA, uBusyBuf);
 				SetFlagOutOne();
 				break;
@@ -111,7 +108,7 @@ void GetAppCmd()
 				
 				memcpy(&uSizeBuf, pData, usSize);
 				usSize = (u16)uSizeBuf;
-				CmdGetToApp(uCmd, usSize);
+				CmdGetToApp(usCmd, usSize);
 				
 				do
 				{
@@ -121,6 +118,57 @@ void GetAppCmd()
 					iOffset += 1;
 				} while (usSize > 0);
 				SetFlagOutOne();
+				break;
+			}
+			case CMD_SET_PARAMS:
+			{
+				int iAxis;
+
+				memcpy(&iAxis, pData, 4);
+				memcpy(&g_Motion_Params[iAxis], pData + 4, sizeof(MOTION_PARAMS));
+				break;
+			}
+			case CMD_SET_JOG:
+			{
+				int iAxis, iDirection;
+
+				memcpy(&iAxis, pData, 4);
+				memcpy(&iDirection, pData + 4, 4);
+
+				if (!iDirection)
+				{
+					g_Motion_Params[iAxis].m_dJogSpeed = -g_Motion_Params[iAxis].m_dJogSpeed;
+					g_Motion_Params[iAxis].m_dJagAcc = -g_Motion_Params[iAxis].m_dJagAcc;
+				}
+
+				g_Position_Params[iAxis].m_uMode = MODE_JOG;
+				break;
+			}
+			case CMD_SET_MOTION:
+			{
+				int iAxis;
+				double dTarPos;
+
+				memcpy(&iAxis, pData, 4);
+				memcpy(&dTarPos, pData + 4, 8);
+				g_Position_Params[iAxis].m_uMode = MODE_MOTION;
+				g_Position_Params[iAxis].m_dTarPos = dTarPos;
+				break;
+			}
+			case CMD_SET_HOME:
+			{
+				int iAxis;
+
+				memcpy(&iAxis, pData, 4);
+				g_Position_Params[iAxis].m_uMode = MODE_HOME;
+				break;
+			}
+			case CMD_SET_STOP:
+			{
+				int iAxis;
+
+				memcpy(&iAxis, pData, 4);
+				g_Position_Params[iAxis].m_uMode = MODE_STOP;
 				break;
 			}
 			default:

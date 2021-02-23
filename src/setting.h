@@ -1,26 +1,23 @@
 #include "stdlib.h"
 #include "stdbool.h"
-#include "string.h"
-#include "xil_io.h"
 #include "Xscugic.h"
 #include "Xil_exception.h"
-#include "xparameters.h"
-#include "EcmDriver.h"
+#include "EcmUsrDriver.h"
 
 // interrupt
 #define ECM_INTR_ID		    	    XPAR_FABRIC_EC01M_0_PLINT_OUT_INTR
 #define INTC_DEVICE_ID			    XPAR_SCUGIC_SINGLE_DEVICE_ID
 
-// Write
-#define ECM_ADDR_SEND				(XPAR_EC01M_0_S00_AXI_BASEADDR)
-#define ECM_ADDR_DATA_BYTE			(XPAR_EC01M_0_S00_AXI_BASEADDR + 4)
-#define ECM_INTR_RESET				(XPAR_EC01M_0_S00_AXI_BASEADDR + 8)
-// Read
-#define ECM_ADDR_BUSY				(XPAR_EC01M_0_S00_AXI_BASEADDR)
-#define ECM_ADDR_IC_BUSY			(XPAR_EC01M_0_S00_AXI_BASEADDR + 4)
-// DATA
-#define ECM_ADDR_DATA_OUT			(XPAR_BRAM_1_BASEADDR)
-#define ECM_ADDR_DATA_IN			(XPAR_BRAM_1_BASEADDR + 4096)
+// // Write
+// #define ECM_ADDR_SEND				(XPAR_EC01M_0_S00_AXI_BASEADDR)
+// #define ECM_ADDR_DATA_BYTE			(XPAR_EC01M_0_S00_AXI_BASEADDR + 4)
+// #define ECM_INTR_RESET				(XPAR_EC01M_0_S00_AXI_BASEADDR + 8)
+// // Read
+// #define ECM_ADDR_BUSY				(XPAR_EC01M_0_S00_AXI_BASEADDR)
+// #define ECM_ADDR_IC_BUSY			(XPAR_EC01M_0_S00_AXI_BASEADDR + 4)
+// // DATA
+// #define ECM_ADDR_DATA_OUT			(XPAR_BRAM_1_BASEADDR)
+// #define ECM_ADDR_DATA_IN			(XPAR_BRAM_1_BASEADDR + 4096)
 
 // BRAM define
 #define IO_ADDR_BRAM_IN_FLAG		(XPAR_BRAM_0_BASEADDR + 0)
@@ -46,23 +43,30 @@
 #define CMD_SET_HOME 8
 #define CMD_SET_STOP 9
 
+// mode define
+#define MODE_IDLE 0
+#define MODE_JOG 1
+#define MODE_MOTION 2
+#define MODE_HOME 3
+#define MODE_JOG_END 4
+
 // ECM SPI structure
-ECM_PACK_BEGIN
-typedef struct ECM_PACK spi_cmd_package_t{
-	SPI_CMD_HEADER	Head;
-	uint8_t			Data[PKG_DATA_DEFAULT_SIZE];
-	uint32_t		Crc;
-	uint32_t		StopWord;
-} SPI_CMD_PACKAGE_T;
-ECM_PACK_END
-ECM_PACK_BEGIN
-typedef struct ECM_PACK spi_ret_package_t{
-	SPI_RET_HEADER	Head;
-	uint8_t			Data[PKG_DATA_DEFAULT_SIZE];
-	uint32_t		Crc;
-	uint32_t		StopWord;
-} SPI_RET_PACKAGE_T;
-ECM_PACK_END
+// ECM_PACK_BEGIN
+// typedef struct ECM_PACK spi_cmd_package_t{
+// 	SPI_CMD_HEADER	Head;
+// 	uint8_t			Data[PKG_DATA_DEFAULT_SIZE];
+// 	uint32_t		Crc;
+// 	uint32_t		StopWord;
+// } SPI_CMD_PACKAGE_T;
+// ECM_PACK_END
+// ECM_PACK_BEGIN
+// typedef struct ECM_PACK spi_ret_package_t{
+// 	SPI_RET_HEADER	Head;
+// 	uint8_t			Data[PKG_DATA_DEFAULT_SIZE];
+// 	uint32_t		Crc;
+// 	uint32_t		StopWord;
+// } SPI_RET_PACKAGE_T;
+// ECM_PACK_END
 
 // Params structure
 typedef struct motion_params{
@@ -82,3 +86,8 @@ typedef struct position_params{
 	double m_dCurPos;
 	u32 m_uInput;
 } POSITION_PARAMS;
+
+extern MOTION_PARAMS g_Motion_Params[TEST_SERVO_CNT];
+extern POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
+extern int g_iInterruptFlag;
+extern int g_iStopFlag;

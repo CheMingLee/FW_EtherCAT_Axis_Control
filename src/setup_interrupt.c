@@ -2,22 +2,43 @@
 
 XScuGic Intc; //GIC
 
-extern MOTION_PARAMS g_Motion_Params[2];
-
 void ECM_intr_Handler(void *CallBackRef)
 {
-	// for (size_t i = 0; i < count; i++)
-	// {
-	// 	switch (expression)
-	// 	{
-	// 	case /* constant-expression */:
-	// 		/* code */
-	// 		break;
-		
-	// 	default:
-	// 		break;
-	// 	}
-	// }
+	if(enable)
+	{
+
+	}
+	int i;
+	for (i = 0; i < TEST_SERVO_CNT; i++)
+	{
+		switch (g_Position_Params[i].m_uMode)
+		{
+			case MODE_IDLE:
+			{
+				break;
+			}
+			case MODE_JOG:
+			{
+				break;
+			}
+			case MODE_MOTION:
+			{
+				break;
+			}
+			case MODE_HOME:
+			{
+				break;
+			}
+			case MODE_JOG_END:
+			{
+				break;
+			}
+			default:
+			{
+				break;
+			}
+		}
+	}
 	
 	Xil_Out32(ECM_INTR_RESET, 1);
 }

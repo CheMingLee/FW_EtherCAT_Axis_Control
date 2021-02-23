@@ -23,7 +23,20 @@ extern "C"
 {
 #endif
 #include <stdint.h>
-    
+#include "xil_io.h"
+#include "xparameters.h"
+
+// Write
+#define ECM_ADDR_SEND				(XPAR_EC01M_0_S00_AXI_BASEADDR)
+#define ECM_ADDR_DATA_BYTE			(XPAR_EC01M_0_S00_AXI_BASEADDR + 4)
+#define ECM_INTR_RESET				(XPAR_EC01M_0_S00_AXI_BASEADDR + 8)
+// Read
+#define ECM_ADDR_BUSY				(XPAR_EC01M_0_S00_AXI_BASEADDR)
+#define ECM_ADDR_IC_BUSY			(XPAR_EC01M_0_S00_AXI_BASEADDR + 4)
+// DATA
+#define ECM_ADDR_DATA_OUT			(XPAR_BRAM_1_BASEADDR)
+#define ECM_ADDR_DATA_IN			(XPAR_BRAM_1_BASEADDR + 4096)
+
 #define ECM_PACK_BEGIN
 #define ECM_PACK  __attribute__((__packed__))
 #define ECM_PACK_END
