@@ -134,14 +134,16 @@ void GetAppCmd()
 
 				memcpy(&iAxis, pData, 4);
 				memcpy(&iDirection, pData + 4, 4);
-
-				if (!iDirection)
+				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
 				{
-					g_Motion_Params[iAxis].m_dJogSpeed = -g_Motion_Params[iAxis].m_dJogSpeed;
-					g_Motion_Params[iAxis].m_dJagAcc = -g_Motion_Params[iAxis].m_dJagAcc;
-				}
+					if (iDirection < 0)
+					{
+						g_Motion_Params[iAxis].m_dJogSpeed = -abs(g_Motion_Params[iAxis].m_dJogSpeed);
+						g_Motion_Params[iAxis].m_dJagAcc = -abs(g_Motion_Params[iAxis].m_dJagAcc);
+					}
 
-				g_Position_Params[iAxis].m_uMode = MODE_JOG;
+					g_Position_Params[iAxis].m_uMode = MODE_JOG;
+				}
 				break;
 			}
 			case CMD_SET_MOTION:
@@ -151,8 +153,11 @@ void GetAppCmd()
 
 				memcpy(&iAxis, pData, 4);
 				memcpy(&dTarPos, pData + 4, 8);
-				g_Position_Params[iAxis].m_uMode = MODE_MOTION;
-				g_Position_Params[iAxis].m_dTarPos = dTarPos;
+				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
+				{
+					g_Position_Params[iAxis].m_uMode = MODE_MOTION;
+					g_Position_Params[iAxis].m_dTarPos = dTarPos;
+				}
 				break;
 			}
 			case CMD_SET_HOME:
@@ -160,7 +165,10 @@ void GetAppCmd()
 				int iAxis;
 
 				memcpy(&iAxis, pData, 4);
-				g_Position_Params[iAxis].m_uMode = MODE_HOME;
+				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
+				{
+					g_Position_Params[iAxis].m_uMode = MODE_HOME;
+				}
 				break;
 			}
 			case CMD_SET_STOP:
@@ -168,7 +176,32 @@ void GetAppCmd()
 				int iAxis;
 
 				memcpy(&iAxis, pData, 4);
-				g_Position_Params[iAxis].m_uMode = MODE_STOP;
+				g_bStopFlag[iAxis] = true;
+				break;
+			}
+			case CMD_SET_JOGEND:
+			{
+				int iAxis;
+
+				memcpy(&iAxis, pData, 4);
+				if (g_Position_Params[iAxis].m_uMode == MODE_JOG)
+				{
+					g_Position_Params[iAxis].m_uMode = MODE_JOGEND;
+				}
+				break;
+			}
+			case CMD_SET_INTR:
+			{
+				g_bInterruptFlag = true;
+				break;
+			}
+			case CMD_SET_CURPOS:
+			{
+				int iAxis, iCurPos;
+
+				memcpy(&iAxis, pData, 4);
+				memcpy(&iCurPos, pData + 4, 4);
+				g_Position_Params[iAxis].m_iCurPos = iCurPos;
 				break;
 			}
 			default:

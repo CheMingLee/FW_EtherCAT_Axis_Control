@@ -2,8 +2,8 @@
 
 MOTION_PARAMS g_Motion_Params[TEST_SERVO_CNT];
 POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
-int g_iInterruptFlag;
-int g_iStopFlag;
+bool g_bInterruptFlag;
+bool g_bStopFlag[TEST_SERVO_CNT];
 
 void InitParameters()
 {
@@ -23,10 +23,11 @@ void InitParameters()
 		g_Position_Params[i].m_dCmdPos = 0.0;
 		g_Position_Params[i].m_dCurPos = 0.0;
 		g_Position_Params[i].m_uInput = 0;
+
+		g_bStopFlag[i] = false;
 	}
 
-	g_iInterruptFlag = 0;
-	g_iStopFlag = 0;
+	g_bInterruptFlag = false;
 }
 
 int main()

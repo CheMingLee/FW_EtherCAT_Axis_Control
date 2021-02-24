@@ -42,13 +42,16 @@
 #define CMD_SET_MOTION 7
 #define CMD_SET_HOME 8
 #define CMD_SET_STOP 9
+#define CMD_SET_JOGEND 10
+#define CMD_SET_INTR 11
+#define CMD_SET_CURPOS 12
 
 // mode define
 #define MODE_IDLE 0
 #define MODE_JOG 1
 #define MODE_MOTION 2
 #define MODE_HOME 3
-#define MODE_JOG_END 4
+#define MODE_JOGEND 4
 
 // ECM SPI structure
 // ECM_PACK_BEGIN
@@ -77,17 +80,18 @@ typedef struct motion_params{
 	double m_dJagAcc;
 	double m_dMotionAcc;
 	double m_dHomeAcc;
+	double m_dRatio;
 } MOTION_PARAMS;
 
 typedef struct position_params{
 	u32 m_uMode;
-	double m_dTarPos;
-	double m_dCmdPos;
-	double m_dCurPos;
+	double m_dTarPos; // mm
+	int m_iCmdPos; // pulse
+	int m_iCurPos; // pulse
 	u32 m_uInput;
 } POSITION_PARAMS;
 
 extern MOTION_PARAMS g_Motion_Params[TEST_SERVO_CNT];
 extern POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
-extern int g_iInterruptFlag;
-extern int g_iStopFlag;
+extern bool g_bInterruptFlag;
+extern bool g_bStopFlag[TEST_SERVO_CNT];

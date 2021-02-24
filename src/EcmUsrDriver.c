@@ -13,6 +13,7 @@
  ******************************************************************************/
 
 #include "EcmUsrDriver.h"
+#include "sleep.h"
 
 uint8_t u8TxBuf[PKG_MAX_SIZE]={0};
 uint8_t u8RxBuf[PKG_MAX_SIZE]={0};
@@ -26,13 +27,15 @@ void PCC6SpiDataExchange(uint8_t *pTxBuf, uint8_t *pRxBuf, uint32_t u32TotalPack
 {
 	if (u32TotalPackSize >= PKG_MIN_SIZE && u32TotalPackSize <= PKG_MAX_SIZE)
 	{
-		int iOffset = 0;
+		int iOffset;
 		int iTotalPackSize;
 		u32 uBusyFlag;
+		u8 u8Data;
 		
-		iTotalPackSize = (int)u32TotalPackSize;
 		Xil_Out32(ECM_ADDR_DATA_BYTE, u32TotalPackSize);
-
+		
+		iOffset = 0;
+		iTotalPackSize = (int)u32TotalPackSize;
 		do
 		{
 			Xil_Out8(ECM_ADDR_DATA_OUT + iOffset, *(pTxBuf + iOffset));
@@ -42,7 +45,20 @@ void PCC6SpiDataExchange(uint8_t *pTxBuf, uint8_t *pRxBuf, uint32_t u32TotalPack
 
 		Xil_Out32(ECM_ADDR_SEND, 1);
 
-		uBusyFlag = Xil_In32(ECM_ADDR_BUSY);
+		do
+		{
+			uBusyFlag = Xil_In32(ECM_ADDR_BUSY);
+		} while (uBusyFlag);
+
+		iOffset = 0;
+		iTotalPackSize = (int)u32TotalPackSize;
+		do
+		{
+			u8Data = Xil_In8(ECM_ADDR_DATA_IN + iOffset);
+			memcpy(pRxBuf + iOffset, &u8Data, 1);
+			iTotalPackSize -= 1;
+			iOffset += 1;
+		} while (iTotalPackSize > 0);
 	}
 }
 
@@ -60,7 +76,7 @@ int SpiDataExchange(uint8_t *RetIdx, uint8_t *RetCmd)
 			*RetCmd = pRet->Head.u8Cmd;
 		return 1;
 	}
-	printf("CRC Error(%d)\n",pCmd->Head.u8Idx);
+	// printf("CRC Error(%d)\n",pCmd->Head.u8Idx);
 	return 0;
 }
 int ECM_GetFirmwareVersion(uint8_t *pVersion)
@@ -127,19 +143,19 @@ int ECM_WaitAsyncDone(int nMS)
 	int i=0;
 	for(i=0;i<nMS;i++){
 		if(ECM_IsAsyncBusy()){
-			UserDelay(1000);//1ms
+			usleep(1000); //1ms
 		}else{
 			return 1;
 		}
 	}
-	printf("Wait done timeout\n");
+	// printf("Wait done timeout\n");
 	return 0;
 }
 int ECM_EcatInit(uint8_t DCActCode, uint32_t CycTime, int32_t CycShift)
 {
 	int i=0;
 	uint8_t IdxCheck;
-	uint8_t EcmStatus;
+	// uint8_t EcmStatus;
 	EC_DCSYNC_H *pDcSyncCmd = (EC_DCSYNC_H *)pCmd->Data;
 	pDcSyncCmd->Slave = ECM_INDEX;
 	pDcSyncCmd->Mode = 0;
@@ -157,7 +173,7 @@ int ECM_EcatInit(uint8_t DCActCode, uint32_t CycTime, int32_t CycShift)
 		}
 	}
 	if(i>=100){
-		printf("Timeout\n");
+		// printf("Timeout\n");
 		return 0;
 	}
 	return ECM_WaitAsyncDone(1000);
@@ -166,7 +182,7 @@ int ECM_EcatReconfig()
 {
 	int i=0;
 	uint8_t IdxCheck;
-	uint8_t EcmStatus;
+	// uint8_t EcmStatus;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_RECONFIG_OP;
 	pCmd->Head.u16Size = 0;
 	pCmd->Head.u8Idx = u8CmdIdx++;
@@ -178,7 +194,7 @@ int ECM_EcatReconfig()
 		}
 	}
 	if(i>=100){
-		printf("Timeout\n");
+		// printf("Timeout\n");
 		return 0;
 	}
 	return ECM_WaitAsyncDone(1000);
@@ -258,7 +274,7 @@ int ECM_StateCheck(uint8_t u8Slave, uint8_t u8ExpectState, int TimeOutMS)
 	int i=0;
 	if(ECM_EcatStateSet(u8Slave, u8ExpectState)){
 		for(i=0;i<TimeOutMS;i++){
-			UserDelay(1000);
+			usleep(1000);
 			if(ECM_EcatStateCheck(u8Slave, u8ExpectState)){
                 int ret = ECM_EcatStateGet(u8Slave, &u8State);
 				if(ret > 0 && u8State == u8ExpectState){
@@ -411,14 +427,14 @@ int ECM_Drv402SM_StateCheck(uint8_t SlvIdx, uint8_t ExceptState, int TimeOutMS)
 		return 0;
 	}
 	for(i=0;i<TimeOutMS;i++){
-		UserDelay(1000);
+		usleep(1000);
 		if(ECM_Drv402SM_StateGet(SlvIdx, &State)){
 			if((State & CIA402_SW_STATE_MASK) == ExceptState){
 				return 1;
 			}
 		}
 	}
-	printf("(%d) 0x%X 0x%X\n",SlvIdx,State,ExceptState);
+	// printf("(%d) 0x%X 0x%X\n",SlvIdx,State,ExceptState);
 	return 0;
 }
 uint16_t ECM_FifoRxPdoSizeGet()
@@ -504,7 +520,7 @@ int ECM_EcatPdoFifoDataExchange(uint8_t u8FifoThreshold, uint8_t *pRxData, uint8
 	pCmd->Head.u8Idx = u8CmdIdx++;
 	memcpy(pCmd->Data, pRxData, pCmd->Head.u16Size);
 	if(SpiDataExchange(0,0) == 0){
-		printf("CRC error\n");
+		// printf("CRC error\n");
 		return -1;//CRC error
 	}
 	if(pu8RxPdoFifoCnt)
@@ -518,12 +534,12 @@ int ECM_EcatPdoFifoDataExchange(uint8_t u8FifoThreshold, uint8_t *pRxData, uint8
 			if(pRet->Head.u16Size){
 				memcpy(pTxData, pRet->Data, pRet->Head.u16Size);
 			}else{
-				printf("zero size\n");
+				// printf("zero size\n");
 				return -4;
 			}
 			return pRet->Head.u16Size;
 		}else{
-			printf("TxPDO FIFO empty\n");
+			// printf("TxPDO FIFO empty\n");
 			return 0;
 		}
 	}else{
@@ -538,7 +554,7 @@ int ECM_EcatEepromReq(
 		uint16_t data, \
 		uint32_t timeout)
 {
-	uint8_t u8RetIdx=0;
+	// uint8_t u8RetIdx=0;
 	ECM_EEPROM_REQ_T *pEepromReq = (ECM_EEPROM_REQ_T *)pCmd->Data;
 	if(!ECM_WaitAsyncDone(1000))
 			return 0;
@@ -583,11 +599,11 @@ int ECM_ShowPDOConfig(int Slave, int SmaIdx)
 	if(nret <= 0){
 		return 0;
 	}
-	printf("(%d) 0x%X : \n",Slave, SmaIdx);
+	// printf("(%d) 0x%X : \n",Slave, SmaIdx);
 	for(i=0;i<PdoConfigBuf.PDOCnt;i++){
-		printf("PDO%d - MapIdx(0x%X)\n", i, PdoConfigBuf.MapIdx[i]);
+		// printf("PDO%d - MapIdx(0x%X)\n", i, PdoConfigBuf.MapIdx[i]);
 		for(j=0; j<PdoConfigBuf.ObjsCnt[i]; j++){
-			printf("\t0x%X\n", PdoConfigBuf.Table[i][j]);
+			// printf("\t0x%X\n", PdoConfigBuf.Table[i][j]);
 		}
 	}
 	return 1;

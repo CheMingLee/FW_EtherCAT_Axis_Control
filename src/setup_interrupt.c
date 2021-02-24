@@ -4,38 +4,40 @@ XScuGic Intc; //GIC
 
 void ECM_intr_Handler(void *CallBackRef)
 {
-	if(enable)
+	if(g_bInterruptFlag)
 	{
-
-	}
-	int i;
-	for (i = 0; i < TEST_SERVO_CNT; i++)
-	{
-		switch (g_Position_Params[i].m_uMode)
+		int i;
+		for (i = 0; i < TEST_SERVO_CNT; i++)
 		{
-			case MODE_IDLE:
+			switch (g_Position_Params[i].m_uMode)
 			{
-				break;
-			}
-			case MODE_JOG:
-			{
-				break;
-			}
-			case MODE_MOTION:
-			{
-				break;
-			}
-			case MODE_HOME:
-			{
-				break;
-			}
-			case MODE_JOG_END:
-			{
-				break;
-			}
-			default:
-			{
-				break;
+				case MODE_IDLE:
+				{
+					break;
+				}
+				case MODE_JOG:
+				{
+					
+					
+
+					break;
+				}
+				case MODE_MOTION:
+				{
+					break;
+				}
+				case MODE_HOME:
+				{
+					break;
+				}
+				case MODE_JOGEND:
+				{
+					break;
+				}
+				default:
+				{
+					break;
+				}
 			}
 		}
 	}
