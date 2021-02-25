@@ -13,6 +13,7 @@ void ECM_intr_Handler(void *CallBackRef)
 			{
 				case MODE_IDLE:
 				{
+					g_Position_Params[i].m_iCmdPos = g_Position_Params[i].m_iCurPos;
 					break;
 				}
 				case MODE_JOG:
