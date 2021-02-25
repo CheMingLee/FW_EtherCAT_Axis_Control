@@ -11,7 +11,7 @@ void InitParameters()
 	for (i = 0; i < TEST_SERVO_CNT; i++)
 	{
 		g_Motion_Params[i].m_dJogSpeed = 0.0;
-		g_Motion_Params[i].m_dJagAcc = 0.0;
+		g_Motion_Params[i].m_dJogAcc = 0.0;
 		g_Motion_Params[i].m_dMotionSpeed = 0.0;
 		g_Motion_Params[i].m_dMotionAcc = 0.0;
 		g_Motion_Params[i].m_dComeHomeSpeed = 0.0;

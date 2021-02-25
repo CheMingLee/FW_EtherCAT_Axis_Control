@@ -139,7 +139,7 @@ void GetAppCmd()
 					if (iDirection < 0)
 					{
 						g_Motion_Params[iAxis].m_dJogSpeed = -abs(g_Motion_Params[iAxis].m_dJogSpeed);
-						g_Motion_Params[iAxis].m_dJagAcc = -abs(g_Motion_Params[iAxis].m_dJagAcc);
+						g_Motion_Params[iAxis].m_dJogAcc = -abs(g_Motion_Params[iAxis].m_dJogAcc);
 					}
 
 					g_Position_Params[iAxis].m_uMode = MODE_JOG;
@@ -157,6 +157,7 @@ void GetAppCmd()
 				{
 					g_Position_Params[iAxis].m_uMode = MODE_MOTION;
 					g_Position_Params[iAxis].m_dTarPos = dTarPos;
+					g_dDistance[iAxis] = dTarPos - (double)g_Position_Params[iAxis].m_iCurPos / g_Motion_Params[iAxis].m_dRatio;
 				}
 				break;
 			}
@@ -201,6 +202,7 @@ void GetAppCmd()
 
 				memcpy(&iAxis, pData, 4);
 				memcpy(&iCurPos, pData + 4, 4);
+				g_Position_Params[iAxis].m_iCmdPos = iCurPos;
 				g_Position_Params[iAxis].m_iCurPos = iCurPos;
 				break;
 			}

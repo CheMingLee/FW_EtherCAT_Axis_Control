@@ -53,6 +53,11 @@
 #define MODE_HOME 3
 #define MODE_JOGEND 4
 
+// digital input define
+#define DIGINPUT_LIMIT_LEFT 0x01
+#define DIGINPUT_HMOE 0x02
+#define DIGINPUT_LIMIT_RIGHT 0x04
+
 // ECM SPI structure
 // ECM_PACK_BEGIN
 // typedef struct ECM_PACK spi_cmd_package_t{
@@ -77,7 +82,7 @@ typedef struct motion_params{
 	double m_dMotionSpeed;
 	double m_dComeHomeSpeed;
 	double m_dLeftHomeSpeed;
-	double m_dJagAcc;
+	double m_dJogAcc;
 	double m_dMotionAcc;
 	double m_dHomeAcc;
 	double m_dRatio;
@@ -95,3 +100,4 @@ extern MOTION_PARAMS g_Motion_Params[TEST_SERVO_CNT];
 extern POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
 extern bool g_bInterruptFlag;
 extern bool g_bStopFlag[TEST_SERVO_CNT];
+extern double g_dDistance[TEST_SERVO_CNT];

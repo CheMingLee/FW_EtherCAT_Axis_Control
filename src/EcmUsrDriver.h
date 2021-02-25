@@ -46,6 +46,13 @@ typedef struct ECM_PACK spi_ret_package_t{
 	uint32_t		StopWord;
 } SPI_RET_PACKAGE_T;
 
+void PCC6SpiDataGet(uint8_t *pRxBuf, uint32_t u32TotalPackSize);
+int SpiDataGet(uint8_t *RetIdx, uint8_t *RetCmd);
+int ECM_EcatPdoFifoDataGet(uint8_t *pTxData, uint16_t u16DataSize);
+void PCC6SpiDataSend(uint8_t *pTxBuf, uint32_t u32TotalPackSize);
+void SpiDataSend();
+void ECM_EcatPdoFifoDataSend(uint8_t *pRxData, uint16_t u16DataSize);
+void PCC6SpiDataExchange(uint8_t *pTxBuf, uint8_t *pRxBuf, uint32_t u32TotalPackSize);
 
 int SpiDataExchange(uint8_t *RetIdx, uint8_t *RetCmd);
 int ECM_GetFirmwareVersion(uint8_t *pVersion);

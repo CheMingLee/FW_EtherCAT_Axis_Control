@@ -23,6 +23,113 @@ SPI_RET_PACKAGE_T *pRet=(SPI_RET_PACKAGE_T *)u8RxBuf;
 
 uint8_t u8CmdIdx = 0;
 
+void PCC6SpiDataGet(uint8_t *pRxBuf, uint32_t u32TotalPackSize)
+{
+	if (u32TotalPackSize >= PKG_MIN_SIZE && u32TotalPackSize <= PKG_MAX_SIZE)
+	{
+		int iOffset;
+		int iTotalPackSize;
+		u32 uBusyFlag;
+		u8 u8Data;
+		
+		do
+		{
+			uBusyFlag = Xil_In32(ECM_ADDR_BUSY);
+		} while (uBusyFlag);
+
+		iOffset = 0;
+		iTotalPackSize = (int)u32TotalPackSize;
+		do
+		{
+			u8Data = Xil_In8(ECM_ADDR_DATA_IN + iOffset);
+			memcpy(pRxBuf + iOffset, &u8Data, 1);
+			iTotalPackSize -= 1;
+			iOffset += 1;
+		} while (iTotalPackSize > 0);
+	}
+}
+
+int SpiDataGet(uint8_t *RetIdx, uint8_t *RetCmd)
+{
+	PCC6SpiDataGet(u8RxBuf, sizeof(SPI_RET_PACKAGE_T));
+	
+	if(pRet->Crc == ECM_CRC_MAGIC_NUM){
+		if(RetIdx)
+			*RetIdx = pRet->Head.u8Idx;
+		if(RetCmd)
+			*RetCmd = pRet->Head.u8Cmd;
+		return 1;
+	}
+	// printf("CRC Error(%d)\n",pCmd->Head.u8Idx);
+	return 0;
+}
+
+int ECM_EcatPdoFifoDataGet(uint8_t *pTxData, uint16_t u16DataSize)
+{
+	if(SpiDataGet(0,0) == 0)
+	{
+		//CRC error
+		return -1;
+	}
+
+	if(pRet->Head.u8Return & ECM_FIFO_RD)
+	{
+		if(pRet->Head.u16Size == u16DataSize)
+		{
+			memcpy(pTxData, pRet->Data, pRet->Head.u16Size);
+			return 1;
+		}
+		else
+		{
+			return -2;
+		}
+	}
+	
+	// printf("TxPDO FIFO empty\n");
+	return 0;
+}
+
+void PCC6SpiDataSend(uint8_t *pTxBuf, uint32_t u32TotalPackSize)
+{
+	if (u32TotalPackSize >= PKG_MIN_SIZE && u32TotalPackSize <= PKG_MAX_SIZE)
+	{
+		int iOffset;
+		int iTotalPackSize;
+		
+		Xil_Out32(ECM_ADDR_DATA_BYTE, u32TotalPackSize);
+		
+		iOffset = 0;
+		iTotalPackSize = (int)u32TotalPackSize;
+		do
+		{
+			Xil_Out8(ECM_ADDR_DATA_OUT + iOffset, *(pTxBuf + iOffset));
+			iTotalPackSize -= 1;
+			iOffset += 1;
+		} while (iTotalPackSize > 0);
+
+		Xil_Out32(ECM_ADDR_SEND, 1);
+	}
+}
+
+void SpiDataSend()
+{
+	pCmd->Head.u32StartWord = ECM_START_WORD;
+	pCmd->Crc = ECM_CRC_MAGIC_NUM;
+	pCmd->StopWord = ECM_STOP_WORD;
+	PCC6SpiDataSend(u8TxBuf, sizeof(SPI_CMD_PACKAGE_T));
+}
+
+void ECM_EcatPdoFifoDataSend(uint8_t *pRxData, uint16_t u16DataSize)
+{
+	pCmd->Head.u8Cmd = ECM_CMD_ECAT_PDO_DATA_FIFO_OP;
+	pCmd->Head.u16Size = u16DataSize;
+	pCmd->Head.u8Param = 1;
+	pCmd->Head.u8Data[0] = (ECM_FIFO_WR | ECM_FIFO_RD);
+	pCmd->Head.u8Idx = u8CmdIdx++;
+	memcpy(pCmd->Data, pRxData, pCmd->Head.u16Size);
+	SpiDataSend();
+}
+
 void PCC6SpiDataExchange(uint8_t *pTxBuf, uint8_t *pRxBuf, uint32_t u32TotalPackSize)
 {
 	if (u32TotalPackSize >= PKG_MIN_SIZE && u32TotalPackSize <= PKG_MAX_SIZE)
