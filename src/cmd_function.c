@@ -125,7 +125,10 @@ void GetAppCmd()
 				int iAxis;
 
 				memcpy(&iAxis, pData, 4);
-				memcpy(&g_Motion_Params[iAxis], pData + 4, sizeof(MOTION_PARAMS));
+				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
+				{
+					memcpy(&g_Motion_Params[iAxis], pData + 4, sizeof(MOTION_PARAMS));
+				}
 				break;
 			}
 			case CMD_SET_JOG:
@@ -156,8 +159,13 @@ void GetAppCmd()
 				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
 				{
 					g_Position_Params[iAxis].m_uMode = MODE_MOTION;
-					g_Position_Params[iAxis].m_dTarPos = dTarPos;
-					g_dDistance[iAxis] = dTarPos - (double)g_Position_Params[iAxis].m_iCurPos / g_Motion_Params[iAxis].m_dRatio;
+					g_Position_Params[iAxis].m_dTarPos = dTarPos * g_Motion_Params[iAxis].m_dRatio;
+					g_dDistance[iAxis] = g_Position_Params[iAxis].m_dTarPos - g_Position_Params[iAxis].m_dCurPos;
+					if (g_dDistance[iAxis] < 0)
+					{
+						g_Motion_Params[i].m_dMotionSpeed = -abs(g_Motion_Params[i].m_dMotionSpeed);
+						g_Motion_Params[i].m_dMotionAcc = -abs(g_Motion_Params[i].m_dMotionAcc);
+					}
 				}
 				break;
 			}
@@ -169,6 +177,7 @@ void GetAppCmd()
 				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
 				{
 					g_Position_Params[iAxis].m_uMode = MODE_HOME;
+					g_bInterruptFlag = false;
 				}
 				break;
 			}
@@ -202,8 +211,8 @@ void GetAppCmd()
 
 				memcpy(&iAxis, pData, 4);
 				memcpy(&iCurPos, pData + 4, 4);
-				g_Position_Params[iAxis].m_iCmdPos = iCurPos;
-				g_Position_Params[iAxis].m_iCurPos = iCurPos;
+				g_Position_Params[iAxis].m_dCmdPos = (double)iCurPos;
+				g_Position_Params[iAxis].m_dCurPos = (double)iCurPos;
 				break;
 			}
 			default:

@@ -85,14 +85,14 @@ typedef struct motion_params{
 	double m_dJogAcc;
 	double m_dMotionAcc;
 	double m_dHomeAcc;
-	double m_dRatio;
+	double m_dRatio; // Axis unit
 } MOTION_PARAMS;
 
 typedef struct position_params{
 	u32 m_uMode;
-	double m_dTarPos; // mm
-	int m_iCmdPos; // pulse
-	int m_iCurPos; // pulse
+	double m_dTarPos; // pulse
+	int m_dCmdPos; // pulse
+	int m_dCurPos; // pulse
 	u32 m_uInput;
 } POSITION_PARAMS;
 
@@ -100,4 +100,4 @@ extern MOTION_PARAMS g_Motion_Params[TEST_SERVO_CNT];
 extern POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
 extern bool g_bInterruptFlag;
 extern bool g_bStopFlag[TEST_SERVO_CNT];
-extern double g_dDistance[TEST_SERVO_CNT];
+extern double g_dDistance[TEST_SERVO_CNT]; // pulse
