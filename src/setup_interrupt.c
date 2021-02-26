@@ -18,7 +18,6 @@ memset(TxData,0,sizeof(TxData));
 
 int g_Vel[TEST_SERVO_CNT] = {0};
 double g_dt = TEST_CYCTIME * pow(10, -9);
-double g_dDistance[TEST_SERVO_CNT] = {0};
 
 void ECM_intr_Handler(void *CallBackRef)
 {
@@ -91,7 +90,25 @@ void ECM_intr_Handler(void *CallBackRef)
 
 					if (!g_bStopFlag)
 					{
-						/* code */
+						S1 = pow(g_Motion_Params[i].m_dMotionSpeed, 2) / (2.0 * g_Motion_Params[i].m_dMotionAcc);
+						S3 = S1;
+						S2 = g_dDistance - S1 - S3;
+						if (S2 <= 0.0)
+						{
+							S1 = (2.0 * g_Motion_Params[i].m_dMotionAcc * g_dDistance) / (4.0 * g_Motion_Params[i].m_dMotionAcc);
+							if (S1 < 0.0)
+							{
+								/* code */
+							}
+							else
+							{
+
+							}
+						}
+						else
+						{
+							
+						}
 					}
 					else
 					{

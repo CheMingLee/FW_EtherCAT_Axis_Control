@@ -4,6 +4,7 @@ MOTION_PARAMS g_Motion_Params[TEST_SERVO_CNT];
 POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
 bool g_bInterruptFlag;
 bool g_bStopFlag[TEST_SERVO_CNT];
+double g_dDistance[TEST_SERVO_CNT] = {0};
 
 void InitParameters()
 {
