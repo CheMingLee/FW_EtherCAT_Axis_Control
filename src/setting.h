@@ -101,3 +101,4 @@ extern POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
 extern bool g_bInterruptFlag;
 extern bool g_bStopFlag[TEST_SERVO_CNT];
 extern double g_dDistance[TEST_SERVO_CNT]; // pulse
+extern double g_dStartPos[TEST_SERVO_CNT]; // pulse

@@ -160,8 +160,13 @@ void GetAppCmd()
 				{
 					g_Position_Params[iAxis].m_uMode = MODE_MOTION;
 					g_Position_Params[iAxis].m_dTarPos = dTarPos * g_Motion_Params[iAxis].m_dRatio;
-					g_dDistance[iAxis] = g_Position_Params[iAxis].m_dTarPos - g_Position_Params[iAxis].m_dCurPos;
-					if (g_dDistance[iAxis] < 0)
+					g_dStartPos[iAxis] = g_Position_Params[iAxis].m_dCmdPos;
+					g_dDistance[iAxis] = g_Position_Params[iAxis].m_dTarPos - g_dStartPos[iAxis];
+					if (g_dDistance[iAxis] == 0)
+					{
+						g_Position_Params[iAxis].m_uMode = MODE_IDLE;
+					}
+					else if (g_dDistance[iAxis] < 0)
 					{
 						g_Motion_Params[i].m_dMotionSpeed = -abs(g_Motion_Params[i].m_dMotionSpeed);
 						g_Motion_Params[i].m_dMotionAcc = -abs(g_Motion_Params[i].m_dMotionAcc);

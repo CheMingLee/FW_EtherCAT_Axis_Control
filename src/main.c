@@ -5,6 +5,7 @@ POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
 bool g_bInterruptFlag;
 bool g_bStopFlag[TEST_SERVO_CNT];
 double g_dDistance[TEST_SERVO_CNT] = {0}; // pulse
+double g_dStartPos[TEST_SERVO_CNT]; // pulse
 
 void InitParameters()
 {
