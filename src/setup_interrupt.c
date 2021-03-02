@@ -21,19 +21,19 @@ double g_dt = TEST_CYCTIME * pow(10, -9);
 
 void GetCmdPos_Acc(double dSpeed, double dAcc)
 {
-	g_Position_Params[i].m_dCmdPos += (g_dVel[i] * g_dt + 0.5 * dAcc * pow(g_dt, 2)) * g_Motion_Params[i].m_dRatio;
 	CalVel_Acc(dSpeed, dAcc);
+	g_Position_Params[i].m_dCmdPos += (g_dVel[i] * g_dt + 0.5 * dAcc * pow(g_dt, 2)) * g_Motion_Params[i].m_dAxisUnit;
 }
 
 void GetCmdPos_ConstVel(double dSpeed)
 {
-	g_Position_Params[i].m_dCmdPos += (dSpeed * g_dt) * g_Motion_Params[i].m_dRatio;
+	g_Position_Params[i].m_dCmdPos += (dSpeed * g_dt) * g_Motion_Params[i].m_dAxisUnit;
 }
 
 void GetCmdPos_Dec(double dSpeed, double dAcc)
 {
-	g_Position_Params[i].m_dCmdPos += (g_dVel[i] * g_dt - 0.5 * dAcc * pow(g_dt, 2)) * g_Motion_Params[i].m_dRatio;
 	CalVel_Dec(dSpeed, dAcc);
+	g_Position_Params[i].m_dCmdPos += (g_dVel[i] * g_dt - 0.5 * dAcc * pow(g_dt, 2)) * g_Motion_Params[i].m_dAxisUnit;
 }
 
 void CalVel_Acc(double dSpeed, double dAcc)
@@ -43,7 +43,7 @@ void CalVel_Acc(double dSpeed, double dAcc)
 		double dS, dt;
 		dS = (pow(dSpeed, 2) - pow(g_dVel[i], 2)) / (2 * dAcc);
 		dt = g_dt - ((dSpeed - g_dVel[i]) / dAcc);
-		g_Position_Params[i].m_dCmdPos += (dS + dSpeed * dt) * g_Motion_Params[i].m_dRatio;
+		g_Position_Params[i].m_dCmdPos += (dS + dSpeed * dt) * g_Motion_Params[i].m_dAxisUnit;
 		g_dVel[i] = dSpeed;
 	}
 	else
@@ -56,7 +56,7 @@ void CalVel_Dec(double dSpeed, double dAcc)
 {
 	if ((dSpeed > 0 && g_dVel[i] - dAcc * g_dt < 0) || (dSpeed < 0 && g_dVel[i] - dAcc * g_dt > 0))
 	{
-		g_Position_Params[i].m_dCmdPos += (pow(g_dVel[i], 2) / (2 * dAcc)) * g_Motion_Params[i].m_dRatio;
+		g_Position_Params[i].m_dCmdPos += (pow(g_dVel[i], 2) / (2 * dAcc)) * g_Motion_Params[i].m_dAxisUnit;
 		g_dVel[i] = 0;
 		g_Position_Params[i].m_uMode = MODE_IDLE;
 	}
@@ -73,7 +73,7 @@ void ECM_intr_Handler(void *CallBackRef)
 		nret = ECM_EcatPdoFifoDataGet(TxData, u16PDOSizeRet);
 		if (nret > 0)
 		{
-			for (i = 0; i < TEST_SERVO_CNT; i++)
+			for (i = 0; i < g_iServoCnt; i++)
 			{
 				g_Position_Params[i].m_dCurPos = (double)pTxPDOData[i].n32AcuPos;
 				g_Position_Params[i].m_uInput = pTxPDOData[i].u32DigInputs;
@@ -88,7 +88,7 @@ void ECM_intr_Handler(void *CallBackRef)
 			g_Position_Params[i].m_uMode = MODE_IDLE;
 		}
 		
-		for (i = 0; i < TEST_SERVO_CNT; i++)
+		for (i = 0; i < g_iServoCnt; i++)
 		{
 			switch (g_Position_Params[i].m_uMode)
 			{
@@ -131,26 +131,26 @@ void ECM_intr_Handler(void *CallBackRef)
 					{
 						S1 = pow(g_Motion_Params[i].m_dMotionSpeed, 2) / (2.0 * g_Motion_Params[i].m_dMotionAcc);
 						S3 = S1;
-						S2 = (g_dDistance[i] / g_Motion_Params[i].m_dRatio) - S1 - S3;
-						if (abs(g_dDistance[i] / g_Motion_Params[i].m_dRatio) - abs(S1) - abs(S3) <= 0.0) // 三角形
+						S2 = (g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit) - S1 - S3;
+						if (abs(g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit) - abs(S1) - abs(S3) <= 0.0) // 三角形
 						{
-							Vm = sqrt(abs(g_Motion_Params[i].m_dMotionAcc) * abs(g_dDistance[i] / g_Motion_Params[i].m_dRatio));
+							Vm = sqrt(abs(g_Motion_Params[i].m_dMotionAcc) * abs(g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit));
 							if (g_dDistance[i] < 0)
 							{
 								Vm = -Vm;
 							}
-							S1 = (g_dDistance[i] / g_Motion_Params[i].m_dRatio) / 2.0;
-							if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dRatio < abs(S1))
+							S1 = (g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit) / 2.0;
+							if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit < abs(S1))
 							{
-								g_Position_Params[i].m_dCmdPos += (g_dVel[i] * g_dt + 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dt, 2)) * g_Motion_Params[i].m_dRatio;
+								g_Position_Params[i].m_dCmdPos += (g_dVel[i] * g_dt + 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dt, 2)) * g_Motion_Params[i].m_dAxisUnit;
 								if (abs(g_dVel[i] + g_Motion_Params[i].m_dMotionAcc * g_dt) > Vm)
 								{
 									double dS, dt;
-									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + S1 * g_Motion_Params[i].m_dRatio;
+									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + S1 * g_Motion_Params[i].m_dAxisUnit;
 									dt = g_dt - ((Vm - g_dVel[i]) / g_Motion_Params[i].m_dMotionAcc);
 									g_dVel[i] = Vm - g_Motion_Params[i].m_dMotionAcc * dt;
 									dS = (pow(Vm, 2) - pow(g_dVel[i], 2)) / (2 * g_Motion_Params[i].m_dMotionAcc);
-									g_Position_Params[i].m_dCmdPos += dS * g_Motion_Params[i].m_dRatio;
+									g_Position_Params[i].m_dCmdPos += dS * g_Motion_Params[i].m_dAxisUnit;
 								}
 								else
 								{
@@ -164,7 +164,7 @@ void ECM_intr_Handler(void *CallBackRef)
 						}
 						else // 梯形
 						{
-							if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dRatio < abs(S1))
+							if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit < abs(S1))
 							{
 								GetCmdPos_Acc(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc);
 								if (abs(g_dVel[i]) > abs(g_Motion_Params[i].m_dMotionSpeed))
@@ -172,19 +172,17 @@ void ECM_intr_Handler(void *CallBackRef)
 									g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed;
 								}
 							}
-							else if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dRatio > abs(S1) && abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dRatio < abs(S1 + S2))
+							else if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit > abs(S1) && abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit < abs(S1 + S2))
 							{
 								GetCmdPos_ConstVel(g_Motion_Params[i].m_dMotionSpeed));
-								if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dRatio > abs(S1 + S2))
+								if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit > abs(S1 + S2))
 								{
 									double dt, dS;
-									dt = (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dRatio - abs(S1) - abs(S2)) / abs(g_Motion_Params[i].m_dMotionSpeed);
+									dt = (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit - abs(S1) - abs(S2)) / abs(g_Motion_Params[i].m_dMotionSpeed);
 									g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed - g_Motion_Params[i].m_dMotionAcc * dt;
 									dS = (pow(g_Motion_Params[i].m_dMotionSpeed, 2) - pow(g_dVel[i], 2)) / (2 * g_Motion_Params[i].m_dMotionAcc);
-									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + (S1 + S2 + dS) * g_Motion_Params[i].m_dRatio;
-
+									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + (S1 + S2 + dS) * g_Motion_Params[i].m_dAxisUnit;
 								}
-								
 							}
 							else
 							{
@@ -209,12 +207,20 @@ void ECM_intr_Handler(void *CallBackRef)
 					if (!g_bStopFlag[i])
 					{
 						// RxPDO u16CtlWord Bit4 -> 1
+						pRxPDOData[i].u16CtlWord = 0x001f;
 						// check TxPDO u16StaWord Bit10, Bit12 -> 1
-						// RxPDO u16CtlWord Bit4 -> 0
+						if (pTxPDOData[i].u16StaWord & 0x3400 == 0x1400)
+						{
+							// RxPDO u16CtlWord Bit4 -> 0
+							pRxPDOData[i].u16CtlWord = 0x000f;
+							g_Position_Params[i].m_uMode = MODE_IDLE;
+						}
 					}
 					else
 					{
 						// RxPDO u16CtlWord Bit4 -> 0, Bit8 -> 1
+						pRxPDOData[i].u16CtlWord = 0x010f;
+						g_Position_Params[i].m_uMode = MODE_IDLE;
 					}
 					
 					break;

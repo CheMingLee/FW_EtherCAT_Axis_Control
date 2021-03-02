@@ -45,6 +45,11 @@
 #define CMD_SET_JOGEND 10
 #define CMD_SET_INTR 11
 #define CMD_SET_CURPOS 12
+#define CMD_SET_SERVOCNT 13
+#define CMD_GET_CURPOS 14
+#define CMD_GET_SERVOMODE 15
+#define CMD_GET_DIGINPUT 16
+#define CMD_SET_INTR_DISABLE 17
 
 // mode define
 #define MODE_IDLE 0
@@ -85,14 +90,14 @@ typedef struct motion_params{
 	double m_dJogAcc;
 	double m_dMotionAcc;
 	double m_dHomeAcc;
-	double m_dRatio; // Axis unit
+	double m_dAxisUnit;
 } MOTION_PARAMS;
 
 typedef struct position_params{
 	u32 m_uMode;
 	double m_dTarPos; // pulse
-	int m_dCmdPos; // pulse
-	int m_dCurPos; // pulse
+	double m_dCmdPos; // pulse
+	double m_dCurPos; // pulse
 	u32 m_uInput;
 } POSITION_PARAMS;
 
@@ -102,3 +107,4 @@ extern bool g_bInterruptFlag;
 extern bool g_bStopFlag[TEST_SERVO_CNT];
 extern double g_dDistance[TEST_SERVO_CNT]; // pulse
 extern double g_dStartPos[TEST_SERVO_CNT]; // pulse
+extern int g_iServoCnt;

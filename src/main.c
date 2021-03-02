@@ -6,6 +6,7 @@ bool g_bInterruptFlag;
 bool g_bStopFlag[TEST_SERVO_CNT];
 double g_dDistance[TEST_SERVO_CNT] = {0}; // pulse
 double g_dStartPos[TEST_SERVO_CNT]; // pulse
+int g_iServoCnt = 2;
 
 void InitParameters()
 {

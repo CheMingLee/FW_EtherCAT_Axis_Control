@@ -159,7 +159,7 @@ void GetAppCmd()
 				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
 				{
 					g_Position_Params[iAxis].m_uMode = MODE_MOTION;
-					g_Position_Params[iAxis].m_dTarPos = dTarPos * g_Motion_Params[iAxis].m_dRatio;
+					g_Position_Params[iAxis].m_dTarPos = dTarPos * g_Motion_Params[iAxis].m_dAxisUnit;
 					g_dStartPos[iAxis] = g_Position_Params[iAxis].m_dCmdPos;
 					g_dDistance[iAxis] = g_Position_Params[iAxis].m_dTarPos - g_dStartPos[iAxis];
 					if (g_dDistance[iAxis] == 0)
@@ -218,6 +218,18 @@ void GetAppCmd()
 				memcpy(&iCurPos, pData + 4, 4);
 				g_Position_Params[iAxis].m_dCmdPos = (double)iCurPos;
 				g_Position_Params[iAxis].m_dCurPos = (double)iCurPos;
+				break;
+			}
+			case CMD_SET_SERVOCNT:
+			{
+				int8_t iSlaveCnt;
+
+				memcpy(&iSlaveCnt, pData, 1);
+				g_iServoCnt = (int)iSlaveCnt;
+			}
+			case CMD_SET_INTR_DISABLE:
+			{
+				g_bInterruptFlag = false;
 				break;
 			}
 			default:
