@@ -75,7 +75,7 @@ void ECM_intr_Handler(void *CallBackRef)
 		{
 			for (i = 0; i < g_iServoCnt; i++)
 			{
-				g_Position_Params[i].m_dCurPos = (double)pTxPDOData[i].n32AcuPos;
+				g_Position_Params[i].m_iCurPos = pTxPDOData[i].n32AcuPos;
 				g_Position_Params[i].m_uInput = pTxPDOData[i].u32DigInputs;
 				if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT || g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT)
 				{

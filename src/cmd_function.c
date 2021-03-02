@@ -217,7 +217,7 @@ void GetAppCmd()
 				memcpy(&iAxis, pData, 4);
 				memcpy(&iCurPos, pData + 4, 4);
 				g_Position_Params[iAxis].m_dCmdPos = (double)iCurPos;
-				g_Position_Params[iAxis].m_dCurPos = (double)iCurPos;
+				g_Position_Params[iAxis].m_iCurPos = iCurPos;
 				break;
 			}
 			case CMD_SET_SERVOCNT:
@@ -226,6 +226,41 @@ void GetAppCmd()
 
 				memcpy(&iSlaveCnt, pData, 1);
 				g_iServoCnt = (int)iSlaveCnt;
+			}
+			case CMD_GET_CURPOS:
+			{
+				int iAxis, iCurPos;
+
+				memcpy(&iAxis, pData, 4);
+				iCurPos = g_Position_Params[iAxis].m_iCurPos;
+				CmdGetToApp(usCmd, 4);
+				memcpy((void *)IO_ADDR_BRAM_OUT_DATA, &iCurPos, 4);
+				SetFlagOutOne();
+				break;
+			}
+			case CMD_GET_SERVOMODE:
+			{
+				int iAxis;
+				u32 u32Mode;
+				
+				memcpy(&iAxis, pData, 4);
+				u32Mode = g_Position_Params[iAxis].m_uMode;
+				CmdGetToApp(usCmd, 4);
+				memcpy((void *)IO_ADDR_BRAM_OUT_DATA, &u32Mode, 4);
+				SetFlagOutOne();
+				break;
+			}
+			case CMD_GET_DIGINPUT:
+			{
+				int iAxis;
+				u32 u32DigInput;
+				
+				memcpy(&iAxis, pData, 4);
+				u32DigInput = g_Position_Params[iAxis].m_uInput;
+				CmdGetToApp(usCmd, 4);
+				memcpy((void *)IO_ADDR_BRAM_OUT_DATA, &u32DigInput, 4);
+				SetFlagOutOne();
+				break;
 			}
 			case CMD_SET_INTR_DISABLE:
 			{

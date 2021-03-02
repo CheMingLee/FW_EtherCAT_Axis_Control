@@ -24,7 +24,7 @@ void InitParameters()
 		g_Position_Params[i].m_uMode = MODE_IDLE;
 		g_Position_Params[i].m_dTarPos = 0.0;
 		g_Position_Params[i].m_dCmdPos = 0.0;
-		g_Position_Params[i].m_dCurPos = 0.0;
+		g_Position_Params[i].m_iCurPos = 0.0;
 		g_Position_Params[i].m_uInput = 0;
 
 		g_bStopFlag[i] = false;

@@ -59,6 +59,7 @@
 #define MODE_JOGEND 4
 
 // digital input define
+#define DIGINPUT_NOTHING 0x00
 #define DIGINPUT_LIMIT_LEFT 0x01
 #define DIGINPUT_HMOE 0x02
 #define DIGINPUT_LIMIT_RIGHT 0x04
@@ -97,7 +98,7 @@ typedef struct position_params{
 	u32 m_uMode;
 	double m_dTarPos; // pulse
 	double m_dCmdPos; // pulse
-	double m_dCurPos; // pulse
+	int m_iCurPos; // pulse
 	u32 m_uInput;
 } POSITION_PARAMS;
 
