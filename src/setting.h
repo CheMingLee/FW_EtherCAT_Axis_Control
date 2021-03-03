@@ -3,6 +3,7 @@
 #include "Xscugic.h"
 #include "Xil_exception.h"
 #include "EcmUsrDriver.h"
+#include "math.h"
 
 // interrupt
 #define ECM_INTR_ID		    	    XPAR_FABRIC_EC01M_0_PLINT_OUT_INTR
