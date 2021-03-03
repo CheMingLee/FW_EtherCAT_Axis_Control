@@ -7,6 +7,7 @@ bool g_bStopFlag[TEST_SERVO_CNT];
 double g_dDistance[TEST_SERVO_CNT] = {0}; // pulse
 double g_dStartPos[TEST_SERVO_CNT]; // pulse
 int g_iServoCnt = 2;
+extern u32 u32LEDout;
 
 void InitParameters()
 {
@@ -30,6 +31,12 @@ void InitParameters()
 		g_bStopFlag[i] = false;
 	}
 
+	for (i = 0; i < PKG_MAX_SIZE; i++)
+	{
+		u8TxBuf[i] = 0;
+		u8RxBuf[i] = 0;
+	}
+
 	g_bInterruptFlag = false;
 }
 
@@ -41,6 +48,8 @@ int main()
 
 	while(1)
 	{
+		u32LEDout ^= 0x01;
+		Xil_Out32(IO_ADDR_LEDOUT, u32LEDout);
 		GetAppCmd();
 	}
 

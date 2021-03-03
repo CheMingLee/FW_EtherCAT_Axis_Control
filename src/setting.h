@@ -31,6 +31,7 @@
 #define IO_ADDR_BRAM_OUT_ACK        (XPAR_BRAM_0_BASEADDR + 264)
 #define IO_ADDR_BRAM_OUT_ACK_SIZE   (XPAR_BRAM_0_BASEADDR + 266)
 #define IO_ADDR_BRAM_OUT_DATA       (XPAR_BRAM_0_BASEADDR + 268)
+#define IO_ADDR_LEDOUT				(XPAR_IO_CONTROL_0_S00_AXI_BASEADDR + 68)
 
 // CMD define
 #define CMD_SET_DATASIZE 0
@@ -110,3 +111,7 @@ extern bool g_bStopFlag[TEST_SERVO_CNT];
 extern double g_dDistance[TEST_SERVO_CNT]; // pulse
 extern double g_dStartPos[TEST_SERVO_CNT]; // pulse
 extern int g_iServoCnt;
+extern uint8_t u8TxBuf[PKG_MAX_SIZE];
+extern uint8_t u8RxBuf[PKG_MAX_SIZE];
+
+

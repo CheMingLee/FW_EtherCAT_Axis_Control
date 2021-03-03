@@ -15,8 +15,8 @@
 #include "EcmUsrDriver.h"
 #include "sleep.h"
 
-uint8_t u8TxBuf[PKG_MAX_SIZE]={0};
-uint8_t u8RxBuf[PKG_MAX_SIZE]={0};
+uint8_t u8TxBuf[PKG_MAX_SIZE];
+uint8_t u8RxBuf[PKG_MAX_SIZE];
 
 SPI_CMD_PACKAGE_T *pCmd=(SPI_CMD_PACKAGE_T *)u8TxBuf;
 SPI_RET_PACKAGE_T *pRet=(SPI_RET_PACKAGE_T *)u8RxBuf;
@@ -126,6 +126,7 @@ void ECM_EcatPdoFifoDataSend(uint8_t *pRxData, uint16_t u16DataSize)
 	pCmd->Head.u8Param = 1;
 	pCmd->Head.u8Data[0] = (ECM_FIFO_WR | ECM_FIFO_RD);
 	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u32CompIntClr = 0x80000000;
 	memcpy(pCmd->Data, pRxData, pCmd->Head.u16Size);
 	SpiDataSend();
 }

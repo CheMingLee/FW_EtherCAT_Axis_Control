@@ -16,6 +16,8 @@ TXPDO_ST_DEF_T *pTxPDOData = (TXPDO_ST_DEF_T *)TxData;
 double g_dVel[TEST_SERVO_CNT] = {0};
 double g_dt = TEST_CYCTIME * pow(10, -9);
 
+u32 u32LEDout = 0;
+
 int GetCmdPos_Acc(double dSpeed, double dAcc)
 {
 	if (abs(g_dVel[i]) >= abs(dSpeed))
@@ -62,8 +64,14 @@ int GetCmdPos_Dec(double dSpeed, double dAcc)
 
 void ECM_intr_Handler(void *CallBackRef)
 {
+	if((u32LEDout & 0x0c) == 0)
+		u32LEDout = (u32LEDout & 0x03) | 0x04;
+	else
+		u32LEDout = (u32LEDout & 0x03) | ((u32LEDout & 0x0c) << 1);
+
 	if(g_bInterruptFlag)
 	{
+		u32LEDout |= 2;
 		nret = ECM_EcatPdoFifoDataGet(TxData, u16PDOSizeRet);
 		if (nret > 0)
 		{
@@ -137,15 +145,12 @@ void ECM_intr_Handler(void *CallBackRef)
 
 					if (!g_bStopFlag[i])
 					{
-						double Vm; // 加速段與減速段交會處之速度
-						double S1; // 加速段位移
-						double S2; // 均速段位移
-						double S3; // 減速段位移
+						double Vm, S1, S2, S3;
 						
 						S1 = pow(g_Motion_Params[i].m_dMotionSpeed, 2) / (2.0 * g_Motion_Params[i].m_dMotionAcc);
 						S3 = S1;
 						S2 = (g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit) - S1 - S3;
-						if (abs(g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit) - abs(S1) - abs(S3) <= 0.0) // 三角形
+						if (abs(g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit) - abs(S1) - abs(S3) <= 0.0)
 						{
 							Vm = sqrt(abs(g_Motion_Params[i].m_dMotionAcc) * abs(g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit));
 							if (g_dDistance[i] < 0)
@@ -184,7 +189,7 @@ void ECM_intr_Handler(void *CallBackRef)
 								break;
 							}
 						}
-						else // 梯形
+						else
 						{
 							if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit < abs(S1))
 							{
@@ -277,10 +282,9 @@ void ECM_intr_Handler(void *CallBackRef)
 
 			pRxPDOData[i].n32TarPos = (int)g_Position_Params[i].m_dCmdPos;
 		}
+		ECM_EcatPdoFifoDataSend(RxData, u16PDOSize);
 	}
 	
-	ECM_EcatPdoFifoDataSend(RxData, u16PDOSize);
-
 	Xil_Out32(ECM_INTR_RESET, 1);
 }
 
