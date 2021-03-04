@@ -1,89 +1,77 @@
 #include "setting.h"
 
-XScuGic Intc; //GIC
-int i = 0;
-int nret = 0;
-
-uint16_t u16PDOSize = 6 * TEST_SERVO_CNT;
-uint16_t u16PDOSizeRet = 10 * TEST_SERVO_CNT;
-
-uint8_t RxData[TEST_SPI_DATA_SIZE]={0};
-uint8_t TxData[TEST_SPI_DATA_SIZE]={0};
-
-RXPDO_ST_DEF_T *pRxPDOData = (RXPDO_ST_DEF_T *)RxData;
-TXPDO_ST_DEF_T *pTxPDOData = (TXPDO_ST_DEF_T *)TxData;
-
-double g_dVel[TEST_SERVO_CNT] = {0};
-double g_dt = TEST_CYCTIME * pow(10, -9);
-
-u32 u32LEDout = 0;
-
-int GetCmdPos_Acc(double dSpeed, double dAcc)
+int GetCmdPos_Acc(double dSpeed, double dAcc, int iAxis)
 {
-	if (abs(g_dVel[i]) >= abs(dSpeed))
+	if (fabs(g_dVel[iAxis]) >= fabs(dSpeed))
 	{
 		return -1;
 	}
-	else if (abs(g_dVel[i] + dAcc * g_dt) > abs(dSpeed))
+	else if (fabs(g_dVel[iAxis] + dAcc * g_dt) > fabs(dSpeed))
 	{
 		double dS, dt;
-		dS = (pow(dSpeed, 2) - pow(g_dVel[i], 2)) / (2 * dAcc);
-		dt = g_dt - ((dSpeed - g_dVel[i]) / dAcc);
-		g_Position_Params[i].m_dCmdPos += (dS + dSpeed * dt) * g_Motion_Params[i].m_dAxisUnit;
-		g_dVel[i] = dSpeed;
+		dS = (pow(dSpeed, 2) - pow(g_dVel[iAxis], 2)) / (2 * dAcc);
+		dt = g_dt - ((dSpeed - g_dVel[iAxis]) / dAcc);
+		g_Position_Params[iAxis].m_dCmdPos += (dS + dSpeed * dt) * g_Motion_Params[iAxis].m_dAxisUnit;
+		g_dVel[iAxis] = dSpeed;
 
 		return 0;
 	}
 
-	g_Position_Params[i].m_dCmdPos += (g_dVel[i] * g_dt + 0.5 * dAcc * pow(g_dt, 2)) * g_Motion_Params[i].m_dAxisUnit;
-	g_dVel[i] += dAcc * g_dt;
+	g_Position_Params[iAxis].m_dCmdPos += (g_dVel[iAxis] * g_dt + 0.5 * dAcc * pow(g_dt, 2)) * g_Motion_Params[iAxis].m_dAxisUnit;
+	g_dVel[iAxis] += dAcc * g_dt;
 
 	return 1;
 }
 
-void GetCmdPos_ConstVel(double dSpeed)
+void GetCmdPos_ConstVel(double dSpeed, int iAxis)
 {
-	g_Position_Params[i].m_dCmdPos += (dSpeed * g_dt) * g_Motion_Params[i].m_dAxisUnit;
+	g_Position_Params[iAxis].m_dCmdPos += (dSpeed * g_dt) * g_Motion_Params[iAxis].m_dAxisUnit;
 }
 
-int GetCmdPos_Dec(double dSpeed, double dAcc)
+int GetCmdPos_Dec(double dSpeed, double dAcc, int iAxis)
 {
-	if ((dSpeed > 0 && g_dVel[i] - dAcc * g_dt < 0) || (dSpeed < 0 && g_dVel[i] - dAcc * g_dt > 0))
+	if ((dSpeed > 0 && g_dVel[iAxis] - dAcc * g_dt < 0) || (dSpeed < 0 && g_dVel[iAxis] - dAcc * g_dt > 0))
 	{
-		g_Position_Params[i].m_dCmdPos += (pow(g_dVel[i], 2) / (2 * dAcc)) * g_Motion_Params[i].m_dAxisUnit;
-		g_dVel[i] = 0;
+		g_Position_Params[iAxis].m_dCmdPos += (pow(g_dVel[iAxis], 2) / (2 * dAcc)) * g_Motion_Params[iAxis].m_dAxisUnit;
+		g_dVel[iAxis] = 0;
 
 		return 0;
 	}
 	
-	g_Position_Params[i].m_dCmdPos += (g_dVel[i] * g_dt - 0.5 * dAcc * pow(g_dt, 2)) * g_Motion_Params[i].m_dAxisUnit;
-	g_dVel[i] -= dAcc * g_dt;
+	g_Position_Params[iAxis].m_dCmdPos += (g_dVel[iAxis] * g_dt - 0.5 * dAcc * pow(g_dt, 2)) * g_Motion_Params[iAxis].m_dAxisUnit;
+	g_dVel[iAxis] -= dAcc * g_dt;
 
 	return 1;
 }
 
 void ECM_intr_Handler(void *CallBackRef)
 {
-	if((u32LEDout & 0x0c) == 0)
-		u32LEDout = (u32LEDout & 0x03) | 0x04;
-	else
-		u32LEDout = (u32LEDout & 0x03) | ((u32LEDout & 0x0c) << 1);
-
+	int i;
+	int nret = 0;
+	
 	if(g_bInterruptFlag)
 	{
-		u32LEDout |= 2;
-		nret = ECM_EcatPdoFifoDataGet(TxData, u16PDOSizeRet);
+		g_u16JF8out ^= 0xffff;
+
+		nret = ECM_EcatPdoFifoDataGet(g_TxData, g_u16PDOSizeRet);
 		if (nret > 0)
 		{
+			g_u32LEDout |= 2;
+
 			for (i = 0; i < g_iServoCnt; i++)
 			{
-				g_Position_Params[i].m_iCurPos = pTxPDOData[i].n32AcuPos;
-				g_Position_Params[i].m_uInput = pTxPDOData[i].u32DigInputs;
+				g_Position_Params[i].m_iCurPos = g_pTxPDOData[i].n32AcuPos;
+				g_Position_Params[i].m_uInput = g_pTxPDOData[i].u32DigInputs;
 			}
 		}
 		else
 		{
-			g_Position_Params[i].m_uMode = MODE_IDLE;
+			g_u32LEDout &= 0xfffffffd;
+
+			for (i = 0; i < g_iServoCnt; i++)
+			{
+				g_Position_Params[i].m_uMode = MODE_IDLE;
+			}
 		}
 		
 		for (i = 0; i < g_iServoCnt; i++)
@@ -114,15 +102,15 @@ void ECM_intr_Handler(void *CallBackRef)
 
 					if (!g_bStopFlag[i])
 					{
-						iRet = GetCmdPos_Acc(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc);
+						iRet = GetCmdPos_Acc(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
 						if (iRet < 0)
 						{
-							GetCmdPos_ConstVel(g_Motion_Params[i].m_dJogSpeed);
+							GetCmdPos_ConstVel(g_Motion_Params[i].m_dJogSpeed, i);
 						}
 					}
 					else
 					{
-						GetCmdPos_Dec(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc);
+						GetCmdPos_Dec(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
 						g_Position_Params[i].m_uMode = MODE_JOGEND;
 					}
 
@@ -179,7 +167,7 @@ void ECM_intr_Handler(void *CallBackRef)
 							}
 							else
 							{
-								iRet = GetCmdPos_Dec(Vm, g_Motion_Params[i].m_dMotionAcc);
+								iRet = GetCmdPos_Dec(Vm, g_Motion_Params[i].m_dMotionAcc, i);
 								if (iRet <= 0)
 								{
 									g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
@@ -193,12 +181,12 @@ void ECM_intr_Handler(void *CallBackRef)
 						{
 							if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit < abs(S1))
 							{
-								GetCmdPos_Acc(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc);
+								GetCmdPos_Acc(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
 								break;
 							}
 							else if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit > abs(S1) && abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit < abs(S1 + S2))
 							{
-								GetCmdPos_ConstVel(g_Motion_Params[i].m_dMotionSpeed);
+								GetCmdPos_ConstVel(g_Motion_Params[i].m_dMotionSpeed, i);
 								if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit > abs(S1 + S2))
 								{
 									double dt, dS;
@@ -212,7 +200,7 @@ void ECM_intr_Handler(void *CallBackRef)
 							}
 							else
 							{
-								iRet = GetCmdPos_Dec(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc);
+								iRet = GetCmdPos_Dec(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
 								if (iRet <= 0)
 								{
 									g_Position_Params[i].m_uMode = MODE_IDLE;
@@ -224,7 +212,7 @@ void ECM_intr_Handler(void *CallBackRef)
 					}
 					else // Stop
 					{
-						iRet = GetCmdPos_Dec(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc);
+						iRet = GetCmdPos_Dec(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
 						if (iRet <= 0)
 						{
 							g_Position_Params[i].m_uMode = MODE_IDLE;
@@ -238,23 +226,22 @@ void ECM_intr_Handler(void *CallBackRef)
 					if (!g_bStopFlag[i])
 					{
 						// RxPDO u16CtlWord Bit4 -> 1
-						pRxPDOData[i].u16CtlWord = 0x001f;
-						// check TxPDO u16StaWord Bit10, Bit12 -> 1
-						if (pTxPDOData[i].u16StaWord & 0x3400 == 0x1400)
+						g_pRxPDOData[i].u16CtlWord = 0x001f;
+						g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
+						// check TxPDO u16StaWord Bit12 -> 1
+						if (g_pTxPDOData[i].u16StaWord & 0x1000)
 						{
 							// RxPDO u16CtlWord Bit4 -> 0
-							pRxPDOData[i].u16CtlWord = 0x000f;
+							g_pRxPDOData[i].u16CtlWord = 0x000f;
 							g_Position_Params[i].m_uMode = MODE_IDLE;
 						}
 					}
 					else
 					{
 						// RxPDO u16CtlWord Bit4 -> 0, Bit8 -> 1
-						pRxPDOData[i].u16CtlWord = 0x010f;
+						g_pRxPDOData[i].u16CtlWord = 0x010f;
 						g_Position_Params[i].m_uMode = MODE_IDLE;
 					}
-
-					g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
 					
 					break;
 				}
@@ -268,7 +255,7 @@ void ECM_intr_Handler(void *CallBackRef)
 					
 					int iRet;
 
-					iRet = GetCmdPos_Dec(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc);
+					iRet = GetCmdPos_Dec(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
 					if (iRet <= 0)
 					{
 						g_Position_Params[i].m_uMode = MODE_IDLE;
@@ -280,9 +267,10 @@ void ECM_intr_Handler(void *CallBackRef)
 					break;
 			}
 
-			pRxPDOData[i].n32TarPos = (int)g_Position_Params[i].m_dCmdPos;
+			g_pRxPDOData[i].n32TarPos = (int)g_Position_Params[i].m_dCmdPos;
 		}
-		ECM_EcatPdoFifoDataSend(RxData, u16PDOSize);
+
+		ECM_EcatPdoFifoDataSend(g_RxData, g_u16PDOSize);
 	}
 	
 	Xil_Out32(ECM_INTR_RESET, 1);
@@ -290,7 +278,7 @@ void ECM_intr_Handler(void *CallBackRef)
 
 void SetupInterruptSystem()
 {
-	XScuGic *GicInstancePtr = &Intc;
+	XScuGic *GicInstancePtr = &g_Intc;
     XScuGic_Config *IntcConfig; //GIC config
 	Xil_ExceptionInit();
 
@@ -302,7 +290,7 @@ void SetupInterruptSystem()
 	//connect to the hardware
 	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, (Xil_ExceptionHandler)XScuGic_InterruptHandler, GicInstancePtr);
 
-	XScuGic_Connect(GicInstancePtr, ECM_INTR_ID, (Xil_ExceptionHandler)ECM_intr_Handler, (void *)&Intc);
+	XScuGic_Connect(GicInstancePtr, ECM_INTR_ID, (Xil_ExceptionHandler)ECM_intr_Handler, (void *)&g_Intc);
 
 	XScuGic_Enable(GicInstancePtr, ECM_INTR_ID);
 

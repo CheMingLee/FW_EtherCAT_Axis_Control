@@ -163,7 +163,6 @@ void GetAppCmd()
 				memcpy(&dTarPos, pData + 4, 8);
 				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
 				{
-					g_Position_Params[iAxis].m_uMode = MODE_MOTION;
 					g_Position_Params[iAxis].m_dTarPos = dTarPos * g_Motion_Params[iAxis].m_dAxisUnit;
 					g_dStartPos[iAxis] = g_Position_Params[iAxis].m_dCmdPos;
 					g_dDistance[iAxis] = g_Position_Params[iAxis].m_dTarPos - g_dStartPos[iAxis];
@@ -175,12 +174,14 @@ void GetAppCmd()
 					{
 						g_Motion_Params[iAxis].m_dMotionSpeed = -abs(g_Motion_Params[iAxis].m_dMotionSpeed);
 						g_Motion_Params[iAxis].m_dMotionAcc = -abs(g_Motion_Params[iAxis].m_dMotionAcc);
+						g_Position_Params[iAxis].m_uMode = MODE_MOTION;
 					}
 					else
 					{
 						g_Motion_Params[iAxis].m_dMotionSpeed = abs(g_Motion_Params[iAxis].m_dMotionSpeed);
 						g_Motion_Params[iAxis].m_dMotionAcc = abs(g_Motion_Params[iAxis].m_dMotionAcc);
-					}
+						g_Position_Params[iAxis].m_uMode = MODE_MOTION;
+					}					
 				}
 				break;
 			}
@@ -198,7 +199,6 @@ void GetAppCmd()
 
 				memcpy(&iAxis, pData, 4);
 				g_Position_Params[iAxis].m_uMode = MODE_HOME;
-				g_bInterruptFlag = false;
 				break;
 			}
 			case CMD_SET_STOP:
@@ -280,6 +280,17 @@ void GetAppCmd()
 			case CMD_SET_INTR_DISABLE:
 			{
 				g_bInterruptFlag = false;
+				break;
+			}
+			case CMD_GET_CMDPOS:
+			{
+				int iAxis, iCmdPos;
+
+				memcpy(&iAxis, pData, 4);
+				iCmdPos = (int)g_Position_Params[iAxis].m_dCmdPos;
+				CmdGetToApp(usCmd, 4);
+				memcpy((void *)IO_ADDR_BRAM_OUT_DATA, &iCmdPos, 4);
+				SetFlagOutOne();
 				break;
 			}
 			default:

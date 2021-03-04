@@ -9,17 +9,6 @@
 #define ECM_INTR_ID		    	    XPAR_FABRIC_EC01M_0_PLINT_OUT_INTR
 #define INTC_DEVICE_ID			    XPAR_SCUGIC_SINGLE_DEVICE_ID
 
-// // Write
-// #define ECM_ADDR_SEND				(XPAR_EC01M_0_S00_AXI_BASEADDR)
-// #define ECM_ADDR_DATA_BYTE			(XPAR_EC01M_0_S00_AXI_BASEADDR + 4)
-// #define ECM_INTR_RESET				(XPAR_EC01M_0_S00_AXI_BASEADDR + 8)
-// // Read
-// #define ECM_ADDR_BUSY				(XPAR_EC01M_0_S00_AXI_BASEADDR)
-// #define ECM_ADDR_IC_BUSY			(XPAR_EC01M_0_S00_AXI_BASEADDR + 4)
-// // DATA
-// #define ECM_ADDR_DATA_OUT			(XPAR_BRAM_1_BASEADDR)
-// #define ECM_ADDR_DATA_IN			(XPAR_BRAM_1_BASEADDR + 4096)
-
 // BRAM define
 #define IO_ADDR_BRAM_IN_FLAG		(XPAR_BRAM_0_BASEADDR + 0)
 #define IO_ADDR_BRAM_IN_SIZE		(XPAR_BRAM_0_BASEADDR + 4)
@@ -32,6 +21,7 @@
 #define IO_ADDR_BRAM_OUT_ACK_SIZE   (XPAR_BRAM_0_BASEADDR + 266)
 #define IO_ADDR_BRAM_OUT_DATA       (XPAR_BRAM_0_BASEADDR + 268)
 #define IO_ADDR_LEDOUT				(XPAR_IO_CONTROL_0_S00_AXI_BASEADDR + 68)
+#define IO_ADDR_OUTPUT				(XPAR_IO_CONTROL_0_S00_AXI_BASEADDR + 0)
 
 // CMD define
 #define CMD_SET_DATASIZE 0
@@ -52,6 +42,7 @@
 #define CMD_GET_SERVOMODE 15
 #define CMD_GET_DIGINPUT 16
 #define CMD_SET_INTR_DISABLE 17
+#define CMD_GET_CMDPOS 18
 
 // mode define
 #define MODE_IDLE 0
@@ -65,24 +56,6 @@
 #define DIGINPUT_LIMIT_LEFT 0x01
 #define DIGINPUT_HMOE 0x02
 #define DIGINPUT_LIMIT_RIGHT 0x04
-
-// ECM SPI structure
-// ECM_PACK_BEGIN
-// typedef struct ECM_PACK spi_cmd_package_t{
-// 	SPI_CMD_HEADER	Head;
-// 	uint8_t			Data[PKG_DATA_DEFAULT_SIZE];
-// 	uint32_t		Crc;
-// 	uint32_t		StopWord;
-// } SPI_CMD_PACKAGE_T;
-// ECM_PACK_END
-// ECM_PACK_BEGIN
-// typedef struct ECM_PACK spi_ret_package_t{
-// 	SPI_RET_HEADER	Head;
-// 	uint8_t			Data[PKG_DATA_DEFAULT_SIZE];
-// 	uint32_t		Crc;
-// 	uint32_t		StopWord;
-// } SPI_RET_PACKAGE_T;
-// ECM_PACK_END
 
 // Params structure
 typedef struct motion_params{
@@ -104,14 +77,24 @@ typedef struct position_params{
 	u32 m_uInput;
 } POSITION_PARAMS;
 
+extern uint8_t g_u8TxBuf[PKG_MAX_SIZE];
+extern uint8_t g_u8RxBuf[PKG_MAX_SIZE];
+extern uint8_t g_u8CmdIdx;
 extern MOTION_PARAMS g_Motion_Params[TEST_SERVO_CNT];
 extern POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
-extern bool g_bInterruptFlag;
 extern bool g_bStopFlag[TEST_SERVO_CNT];
 extern double g_dDistance[TEST_SERVO_CNT]; // pulse
 extern double g_dStartPos[TEST_SERVO_CNT]; // pulse
+extern double g_dVel[TEST_SERVO_CNT]; // mm/s
+extern double g_dt; // s
+extern bool g_bInterruptFlag;
 extern int g_iServoCnt;
-extern uint8_t u8TxBuf[PKG_MAX_SIZE];
-extern uint8_t u8RxBuf[PKG_MAX_SIZE];
-
-
+extern uint16_t g_u16PDOSize;
+extern uint16_t g_u16PDOSizeRet;
+extern uint8_t g_RxData[TEST_SPI_DATA_SIZE];
+extern uint8_t g_TxData[TEST_SPI_DATA_SIZE];
+extern XScuGic g_Intc;
+extern RXPDO_ST_DEF_T *g_pRxPDOData;
+extern TXPDO_ST_DEF_T *g_pTxPDOData;
+extern u32 g_u32LEDout;
+extern u16 g_u16JF8out;

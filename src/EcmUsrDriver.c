@@ -15,13 +15,13 @@
 #include "EcmUsrDriver.h"
 #include "sleep.h"
 
-uint8_t u8TxBuf[PKG_MAX_SIZE];
-uint8_t u8RxBuf[PKG_MAX_SIZE];
+extern uint8_t g_u8TxBuf[PKG_MAX_SIZE];
+extern uint8_t g_u8RxBuf[PKG_MAX_SIZE];
 
-SPI_CMD_PACKAGE_T *pCmd=(SPI_CMD_PACKAGE_T *)u8TxBuf;
-SPI_RET_PACKAGE_T *pRet=(SPI_RET_PACKAGE_T *)u8RxBuf;
+SPI_CMD_PACKAGE_T *pCmd=(SPI_CMD_PACKAGE_T *)g_u8TxBuf;
+SPI_RET_PACKAGE_T *pRet=(SPI_RET_PACKAGE_T *)g_u8RxBuf;
 
-uint8_t u8CmdIdx = 0;
+extern uint8_t g_u8CmdIdx;
 
 void PCC6SpiDataGet(uint8_t *pRxBuf, uint32_t u32TotalPackSize)
 {
@@ -51,7 +51,7 @@ void PCC6SpiDataGet(uint8_t *pRxBuf, uint32_t u32TotalPackSize)
 
 int SpiDataGet(uint8_t *RetIdx, uint8_t *RetCmd)
 {
-	PCC6SpiDataGet(u8RxBuf, sizeof(SPI_RET_PACKAGE_T));
+	PCC6SpiDataGet(g_u8RxBuf, sizeof(SPI_RET_PACKAGE_T));
 	
 	if(pRet->Crc == ECM_CRC_MAGIC_NUM){
 		if(RetIdx)
@@ -116,7 +116,7 @@ void SpiDataSend()
 	pCmd->Head.u32StartWord = ECM_START_WORD;
 	pCmd->Crc = ECM_CRC_MAGIC_NUM;
 	pCmd->StopWord = ECM_STOP_WORD;
-	PCC6SpiDataSend(u8TxBuf, sizeof(SPI_CMD_PACKAGE_T));
+	PCC6SpiDataSend(g_u8TxBuf, sizeof(SPI_CMD_PACKAGE_T));
 }
 
 void ECM_EcatPdoFifoDataSend(uint8_t *pRxData, uint16_t u16DataSize)
@@ -125,7 +125,7 @@ void ECM_EcatPdoFifoDataSend(uint8_t *pRxData, uint16_t u16DataSize)
 	pCmd->Head.u16Size = u16DataSize;
 	pCmd->Head.u8Param = 1;
 	pCmd->Head.u8Data[0] = (ECM_FIFO_WR | ECM_FIFO_RD);
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pCmd->Head.u32CompIntClr = 0x80000000;
 	memcpy(pCmd->Data, pRxData, pCmd->Head.u16Size);
 	SpiDataSend();
@@ -175,7 +175,7 @@ int SpiDataExchange(uint8_t *RetIdx, uint8_t *RetCmd)
 	pCmd->Head.u32StartWord = ECM_START_WORD;
 	pCmd->Crc = ECM_CRC_MAGIC_NUM;
 	pCmd->StopWord = ECM_STOP_WORD;
-	PCC6SpiDataExchange(u8TxBuf, u8RxBuf, sizeof(SPI_CMD_PACKAGE_T));
+	PCC6SpiDataExchange(g_u8TxBuf, g_u8RxBuf, sizeof(SPI_CMD_PACKAGE_T));
 	
 	if(pRet->Crc == ECM_CRC_MAGIC_NUM){
 		if(RetIdx)
@@ -193,7 +193,7 @@ int ECM_GetFirmwareVersion(uint8_t *pVersion)
 	uint8_t IdxCheck;
 	pCmd->Head.u8Cmd = ECM_CMD_FW_VERSION_GET;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pCmd->Head.u8Ctrl = 0;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
@@ -209,7 +209,7 @@ int ECM_InfoUpdate(uint8_t *pEcmStatus, uint8_t *pRxPDOFifoCnt, uint8_t *CrcErrC
 {
 	pCmd->Head.u8Cmd = ECM_CMD_INFO_UPDATE_OP;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pCmd->Head.u8Ctrl = 0;
 	if(SpiDataExchange(0,0)){
 		if(pEcmStatus)
@@ -272,7 +272,7 @@ int ECM_EcatInit(uint8_t DCActCode, uint32_t CycTime, int32_t CycShift)
 	pDcSyncCmd->CyclShift = CycShift;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_INIT_OP;
 	pCmd->Head.u16Size = sizeof(EC_DCSYNC_H);
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
 			if(pCmd->Head.u8Idx == IdxCheck){
@@ -293,7 +293,7 @@ int ECM_EcatReconfig()
 	// uint8_t EcmStatus;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_RECONFIG_OP;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
 			if(pCmd->Head.u8Idx == IdxCheck){
@@ -314,7 +314,7 @@ int8_t ECM_EcatSlvCntGet()
 	uint8_t IdxCheck;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_SLV_CNT_GET;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
 			if(pCmd->Head.u8Idx == IdxCheck){
@@ -331,7 +331,7 @@ int ECM_EcatStateSet(uint8_t u8Slave, uint8_t u8State)
 		return 0;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_STATE_SET;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pCmd->Head.u8Param = u8Slave;
 	pCmd->Head.u8Data[0] = u8State;
 	return SpiDataExchange(0,0);
@@ -344,7 +344,7 @@ int ECM_EcatStateGet(uint8_t u8Slave, uint8_t *pu8State)
 			return 0;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_STATE_GET;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pCmd->Head.u8Param = u8Slave;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
@@ -364,7 +364,7 @@ int ECM_EcatStateCheck(uint8_t u8Slave, uint8_t u8State)
 			return 0;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_STATE_CHECK;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pCmd->Head.u8Param = u8Slave;
 	pCmd->Head.u8Data[0] = u8State;
 	for(i=0;i<100;i++){
@@ -399,7 +399,7 @@ int ECM_EcatPdoConfigSet( uint8_t Slave, PDO_CONFIG_HEAD *pConfigData)
 			return 0;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_PDO_CONFIG_SET;
 	pCmd->Head.u16Size = sizeof(PDO_CONFIG_HEAD);
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pConfigData->Slave = Slave;
 	memcpy(pCmd->Data, pConfigData, sizeof(PDO_CONFIG_HEAD));
 	if(SpiDataExchange(0,0)){
@@ -416,7 +416,7 @@ int ECM_EcatPdoConfigReq(uint8_t Slave, uint16_t SmaIdx)
 	pTxCmd = (PDO_CONFIG_HEAD *)pCmd->Data;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_PDO_CONFIG_REQ;
 	pCmd->Head.u16Size = sizeof(PDO_CONFIG_HEAD);
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pTxCmd->Slave = Slave;
 	pTxCmd->SmaIdx = SmaIdx;
 	return SpiDataExchange(0,0);
@@ -429,7 +429,7 @@ int ECM_EcatPdoConfigGet(PDO_CONFIG_HEAD *pBuf)
 			return 0;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_PDO_CONFIG_GET;
 	pCmd->Head.u16Size = sizeof(PDO_CONFIG_HEAD);
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
 			if(pCmd->Head.u8Idx == IdxCheck){
@@ -454,7 +454,7 @@ int ECM_EcatSdoReq(uint8_t OP, \
 	if(!ECM_WaitAsyncDone(1000))
 			return 0;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_SDO_REQ;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pCmd->Head.u8Ctrl = 0;
 	pSdoCmd->OP = OP;
 	pSdoCmd->Slave = Slave;
@@ -478,7 +478,7 @@ int16_t ECM_EcatSdoGet(uint8_t *pBuf)
 			return 0;
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_SDO_GET;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pCmd->Head.u8Ctrl = 0;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
@@ -496,7 +496,7 @@ int ECM_Drv402SM_Enable(uint8_t SlvIdx)
 	pCmd->Head.u16Size = 0;
 	pCmd->Head.u8Param = SlvIdx;
 	pCmd->Head.u8Data[0] = (CIA402_FSM_CTL_ENABLE_MASK | CIA402_FSM_CTL_FAULT_RST_MASK);
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	return SpiDataExchange(0,0);
 }
 int ECM_Drv402SM_StateSet(uint8_t SlvIdx, uint8_t State)
@@ -505,7 +505,7 @@ int ECM_Drv402SM_StateSet(uint8_t SlvIdx, uint8_t State)
 	pCmd->Head.u16Size = 0;
 	pCmd->Head.u8Param = SlvIdx;
 	pCmd->Head.u8Data[0] = State;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	return SpiDataExchange(0,0);
 }
 int ECM_Drv402SM_StateGet(uint8_t SlvIdx, uint8_t *pState)
@@ -515,7 +515,7 @@ int ECM_Drv402SM_StateGet(uint8_t SlvIdx, uint8_t *pState)
 	pCmd->Head.u8Cmd = ECM_CMD_402_STATE_GET;
 	pCmd->Head.u16Size = 0;
 	pCmd->Head.u8Param = SlvIdx;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
 			if(pCmd->Head.u8Idx == IdxCheck){
@@ -551,7 +551,7 @@ uint16_t ECM_FifoRxPdoSizeGet()
 	uint8_t IdxCheck;
 	pCmd->Head.u8Cmd = ECM_CMD_FIFO_PACK_SIZE_GET;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pCmd->Head.u8Param = 0;	//	0:	RX
 							//	1:	TX
 	for(i=0;i<10;i++){
@@ -569,7 +569,7 @@ uint16_t ECM_FifoTxPdoSizeGet()
 	uint8_t IdxCheck;
 	pCmd->Head.u8Cmd = ECM_CMD_FIFO_PACK_SIZE_GET;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pCmd->Head.u8Param = 1;	//	0:	RX
 							//	1:	TX
 	for(i=0;i<10;i++){
@@ -585,7 +585,7 @@ uint8_t ECM_EcatPdoDataExchange(uint8_t u8OP, uint8_t *pRxData, uint8_t *pTxData
 {
 	pCmd->Head.u8Cmd = ECM_CMD_ECAT_PDO_DATA_OP;
 	pCmd->Head.u16Size = *pu16DataSize;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	if(u8OP){
 		pCmd->Head.u8Data[0] = u8OP;
 	}else{
@@ -625,7 +625,7 @@ int ECM_EcatPdoFifoDataExchange(uint8_t u8FifoThreshold, uint8_t *pRxData, uint8
 	pCmd->Head.u16Size = u16DataSize;
 	pCmd->Head.u8Param = 1;
 	pCmd->Head.u8Data[0] = (ECM_FIFO_WR | ECM_FIFO_RD);
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	memcpy(pCmd->Data, pRxData, pCmd->Head.u16Size);
 	if(SpiDataExchange(0,0) == 0){
 		// printf("CRC error\n");
@@ -667,7 +667,7 @@ int ECM_EcatEepromReq(
 	if(!ECM_WaitAsyncDone(1000))
 			return 0;
 	pCmd->Head.u8Cmd = ECM_EEPROM_REQ;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	pEepromReq->OP = OP;
 	pEepromReq->slave = slave;
 	pEepromReq->eeproma = eeproma;
@@ -684,7 +684,7 @@ int ECM_EcatEepromGet(uint64_t *pu64Data)
 			return 0;
 	pCmd->Head.u8Cmd = ECM_EEPROM_GET;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
 			if(pCmd->Head.u8Idx == IdxCheck){
@@ -730,7 +730,7 @@ int ECM_EcatDatagramReq(
 	if(!ECM_WaitAsyncDone(1000))
 		return 0;
 	pCmd->Head.u8Cmd = ECM_CMD_RAW_ECAT_FUNC_REQ;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
     pCmd->Head.u16Size = sizeof(EC_RAW_API_PARAM_H) - 256 + length;
 	pDatagramCmd->OP = cmd;
 	pDatagramCmd->ADO = offset;
@@ -755,7 +755,7 @@ int ECM_EcatDatagramGet(uint8_t *pBuf)
 		return 0;
 	pCmd->Head.u8Cmd = ECM_CMD_RAW_ECAT_FUNC_GET;
 	pCmd->Head.u16Size = 0;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
 			if(pCmd->Head.u8Idx == IdxCheck){
@@ -777,7 +777,7 @@ int ECM_SlaveInfoGet(uint8_t slave, uint8_t info, uint8_t *pBuf)
     pCmd->Head.u8Param = slave;
 	pCmd->Head.u16Size = 0;
     pCmd->Head.u8Data[0] = info;
-	pCmd->Head.u8Idx = u8CmdIdx++;
+	pCmd->Head.u8Idx = g_u8CmdIdx++;
 	for(i=0;i<100;i++){
 		if(SpiDataExchange(&IdxCheck, 0)){
 			if(pCmd->Head.u8Idx == IdxCheck){
