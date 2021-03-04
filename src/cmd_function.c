@@ -139,15 +139,17 @@ void GetAppCmd()
 				memcpy(&iDirection, pData + 4, 4);
 				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
 				{
+					g_dStartPos[iAxis] = g_Position_Params[iAxis].m_dCmdPos;
+
 					if (iDirection <= 0)
 					{
-						g_Motion_Params[iAxis].m_dJogSpeed = -abs(g_Motion_Params[iAxis].m_dJogSpeed);
-						g_Motion_Params[iAxis].m_dJogAcc = -abs(g_Motion_Params[iAxis].m_dJogAcc);
+						g_Motion_Params[iAxis].m_dJogSpeed = -fabs(g_Motion_Params[iAxis].m_dJogSpeed);
+						g_Motion_Params[iAxis].m_dJogAcc = -fabs(g_Motion_Params[iAxis].m_dJogAcc);
 					}
 					else
 					{
-						g_Motion_Params[iAxis].m_dJogSpeed = abs(g_Motion_Params[iAxis].m_dJogSpeed);
-						g_Motion_Params[iAxis].m_dJogAcc = abs(g_Motion_Params[iAxis].m_dJogAcc);
+						g_Motion_Params[iAxis].m_dJogSpeed = fabs(g_Motion_Params[iAxis].m_dJogSpeed);
+						g_Motion_Params[iAxis].m_dJogAcc = fabs(g_Motion_Params[iAxis].m_dJogAcc);
 					}
 
 					g_Position_Params[iAxis].m_uMode = MODE_JOG;
@@ -163,25 +165,25 @@ void GetAppCmd()
 				memcpy(&dTarPos, pData + 4, 8);
 				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
 				{
-					g_Position_Params[iAxis].m_dTarPos = dTarPos * g_Motion_Params[iAxis].m_dAxisUnit;
+					g_Position_Params[iAxis].m_dTarPos = dTarPos;
 					g_dStartPos[iAxis] = g_Position_Params[iAxis].m_dCmdPos;
 					g_dDistance[iAxis] = g_Position_Params[iAxis].m_dTarPos - g_dStartPos[iAxis];
 					if (g_dDistance[iAxis] == 0)
 					{
 						g_Position_Params[iAxis].m_uMode = MODE_IDLE;
+						break;
 					}
 					else if (g_dDistance[iAxis] < 0)
 					{
-						g_Motion_Params[iAxis].m_dMotionSpeed = -abs(g_Motion_Params[iAxis].m_dMotionSpeed);
-						g_Motion_Params[iAxis].m_dMotionAcc = -abs(g_Motion_Params[iAxis].m_dMotionAcc);
-						g_Position_Params[iAxis].m_uMode = MODE_MOTION;
+						g_Motion_Params[iAxis].m_dMotionSpeed = -fabs(g_Motion_Params[iAxis].m_dMotionSpeed);
+						g_Motion_Params[iAxis].m_dMotionAcc = -fabs(g_Motion_Params[iAxis].m_dMotionAcc);
 					}
 					else
 					{
-						g_Motion_Params[iAxis].m_dMotionSpeed = abs(g_Motion_Params[iAxis].m_dMotionSpeed);
-						g_Motion_Params[iAxis].m_dMotionAcc = abs(g_Motion_Params[iAxis].m_dMotionAcc);
-						g_Position_Params[iAxis].m_uMode = MODE_MOTION;
-					}					
+						g_Motion_Params[iAxis].m_dMotionSpeed = fabs(g_Motion_Params[iAxis].m_dMotionSpeed);
+						g_Motion_Params[iAxis].m_dMotionAcc = fabs(g_Motion_Params[iAxis].m_dMotionAcc);
+					}
+					g_Position_Params[iAxis].m_uMode = MODE_MOTION;			
 				}
 				break;
 			}

@@ -9,36 +9,40 @@ int GetCmdPos_Acc(double dSpeed, double dAcc, int iAxis)
 	else if (fabs(g_dVel[iAxis] + dAcc * g_dt) > fabs(dSpeed))
 	{
 		double dS, dt;
-		dS = (pow(dSpeed, 2) - pow(g_dVel[iAxis], 2)) / (2 * dAcc);
+		dS = pow(dSpeed, 2) / (2 * dAcc);
 		dt = g_dt - ((dSpeed - g_dVel[iAxis]) / dAcc);
-		g_Position_Params[iAxis].m_dCmdPos += (dS + dSpeed * dt) * g_Motion_Params[iAxis].m_dAxisUnit;
+		g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + dS + dSpeed * dt;
 		g_dVel[iAxis] = dSpeed;
-
+		g_dTime[iAxis] = 0;
+		g_dStartPos[iAxis] = g_Position_Params[iAxis].m_dCmdPos;
 		return 0;
 	}
 
-	g_Position_Params[iAxis].m_dCmdPos += (g_dVel[iAxis] * g_dt + 0.5 * dAcc * pow(g_dt, 2)) * g_Motion_Params[iAxis].m_dAxisUnit;
-	g_dVel[iAxis] += dAcc * g_dt;
+	g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + 0.5 * dAcc * pow(g_dTime[iAxis], 2);
+	g_dVel[iAxis] = dAcc * g_dTime[iAxis];
+	g_dTime[iAxis] += g_dt;
 
 	return 1;
 }
 
 void GetCmdPos_ConstVel(double dSpeed, int iAxis)
 {
-	g_Position_Params[iAxis].m_dCmdPos += (dSpeed * g_dt) * g_Motion_Params[iAxis].m_dAxisUnit;
+	g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + dSpeed * g_dTime[iAxis];
+	g_dTime[iAxis] += g_dt;
+	g_dVel[iAxis] = dSpeed;
 }
 
 int GetCmdPos_Dec(double dSpeed, double dAcc, int iAxis)
 {
-	if ((dSpeed > 0 && g_dVel[iAxis] - dAcc * g_dt < 0) || (dSpeed < 0 && g_dVel[iAxis] - dAcc * g_dt > 0))
+	if ((dSpeed > 0 && (g_dVel[iAxis] - dAcc * g_dt) < 0) || (dSpeed < 0 && (g_dVel[iAxis] - dAcc) * g_dt > 0))
 	{
-		g_Position_Params[iAxis].m_dCmdPos += (pow(g_dVel[iAxis], 2) / (2 * dAcc)) * g_Motion_Params[iAxis].m_dAxisUnit;
+		g_Position_Params[iAxis].m_dCmdPos += pow(g_dVel[iAxis], 2) / (2 * dAcc);
 		g_dVel[iAxis] = 0;
 
 		return 0;
 	}
 	
-	g_Position_Params[iAxis].m_dCmdPos += (g_dVel[iAxis] * g_dt - 0.5 * dAcc * pow(g_dt, 2)) * g_Motion_Params[iAxis].m_dAxisUnit;
+	g_Position_Params[iAxis].m_dCmdPos += g_dVel[iAxis] * g_dt - 0.5 * dAcc * pow(g_dt, 2);
 	g_dVel[iAxis] -= dAcc * g_dt;
 
 	return 1;
@@ -81,22 +85,23 @@ void ECM_intr_Handler(void *CallBackRef)
 				case MODE_IDLE:
 				{
 					g_dVel[i] = 0;
+					g_dTime[i] = 0;
 					g_bStopFlag[i] = false;
 
 					break;
 				}
 				case MODE_JOG:
 				{
-					if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT && g_Motion_Params[i].m_dJogSpeed < 0)
-					{
-						g_Position_Params[i].m_uMode = MODE_IDLE;
-						break;
-					}
-					else if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT && g_Motion_Params[i].m_dJogSpeed > 0)
-					{
-						g_Position_Params[i].m_uMode = MODE_IDLE;
-						break;
-					}
+					// if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT && g_Motion_Params[i].m_dJogSpeed < 0)
+					// {
+					// 	g_Position_Params[i].m_uMode = MODE_IDLE;
+					// 	break;
+					// }
+					// else if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT && g_Motion_Params[i].m_dJogSpeed > 0)
+					// {
+					// 	g_Position_Params[i].m_uMode = MODE_IDLE;
+					// 	break;
+					// }
 					
 					int iRet;
 

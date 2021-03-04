@@ -8,7 +8,8 @@ POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
 bool g_bStopFlag[TEST_SERVO_CNT];
 double g_dDistance[TEST_SERVO_CNT]; // pulse
 double g_dStartPos[TEST_SERVO_CNT]; // pulse
-double g_dVel[TEST_SERVO_CNT]; // mm/s
+double g_dVel[TEST_SERVO_CNT];
+double g_dTime[TEST_SERVO_CNT];
 double g_dt;
 bool g_bInterruptFlag;
 int g_iServoCnt;
@@ -56,6 +57,7 @@ void InitParameters()
 		g_dDistance[i] = 0.0;
 		g_dStartPos[i] = 0.0;
 		g_dVel[i] = 0.0;
+		g_dTime[i] = 0.0;
 	}
 
 	g_dt = TEST_CYCTIME * pow(10, -9);
