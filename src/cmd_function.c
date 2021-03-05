@@ -139,8 +139,6 @@ void GetAppCmd()
 				memcpy(&iDirection, pData + 4, 4);
 				if (g_Position_Params[iAxis].m_uMode == MODE_IDLE)
 				{
-					g_dStartPos[iAxis] = g_Position_Params[iAxis].m_dCmdPos;
-
 					if (iDirection <= 0)
 					{
 						g_Motion_Params[iAxis].m_dJogSpeed = -fabs(g_Motion_Params[iAxis].m_dJogSpeed);
@@ -183,7 +181,7 @@ void GetAppCmd()
 						g_Motion_Params[iAxis].m_dMotionSpeed = fabs(g_Motion_Params[iAxis].m_dMotionSpeed);
 						g_Motion_Params[iAxis].m_dMotionAcc = fabs(g_Motion_Params[iAxis].m_dMotionAcc);
 					}
-					g_Position_Params[iAxis].m_uMode = MODE_MOTION;			
+					g_Position_Params[iAxis].m_uMode = MODE_MOTION;
 				}
 				break;
 			}

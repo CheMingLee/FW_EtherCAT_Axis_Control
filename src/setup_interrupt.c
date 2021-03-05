@@ -1,5 +1,50 @@
 #include "setting.h"
 
+int GetCmdPos_Acc_Jog(double dSpeed, double dAcc, int iAxis)
+{
+	if (fabs(g_dVel[iAxis]) >= fabs(dSpeed))
+	{
+		return -1;
+	}
+	else if (fabs(g_dVel[iAxis] + dAcc * g_dt) > fabs(dSpeed))
+	{
+		double dS, dt;
+		dS = (pow(dSpeed, 2) - pow(g_dVel[iAxis], 2)) / (2 * dAcc);
+		dt = g_dt - ((dSpeed - g_dVel[iAxis]) / dAcc);
+		g_Position_Params[iAxis].m_dCmdPos += dS + dSpeed * dt;
+		g_dVel[iAxis] = dSpeed;
+
+		return 0;
+	}
+
+	g_Position_Params[iAxis].m_dCmdPos += g_dVel[iAxis] * g_dt + 0.5 * dAcc * pow(g_dt, 2);
+	g_dVel[iAxis] += dAcc *g_dt;
+
+	return 1;
+}
+
+void GetCmdPos_ConstVel_Jog(double dSpeed, int iAxis)
+{
+	g_Position_Params[iAxis].m_dCmdPos += dSpeed * g_dt;
+	g_dVel[iAxis] = dSpeed;
+}
+
+int GetCmdPos_Dec_Jog(double dSpeed, double dAcc, int iAxis)
+{
+	if ((dSpeed > 0 && (g_dVel[iAxis] - dAcc * g_dt) < 0) || (dSpeed < 0 && (g_dVel[iAxis] - dAcc * g_dt) > 0))
+	{
+		g_Position_Params[iAxis].m_dCmdPos += pow(g_dVel[iAxis], 2) / (2 * dAcc);
+		g_dVel[iAxis] = 0;
+
+		return 0;
+	}
+	
+	g_Position_Params[iAxis].m_dCmdPos += g_dVel[iAxis] * g_dt - 0.5 * dAcc * pow(g_dt, 2);
+	g_dVel[iAxis] -= dAcc * g_dt;
+
+	return 1;
+}
+
 int GetCmdPos_Acc(double dSpeed, double dAcc, int iAxis)
 {
 	if (fabs(g_dVel[iAxis]) >= fabs(dSpeed))
@@ -13,7 +58,6 @@ int GetCmdPos_Acc(double dSpeed, double dAcc, int iAxis)
 		dt = g_dt - ((dSpeed - g_dVel[iAxis]) / dAcc);
 		g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + dS + dSpeed * dt;
 		g_dVel[iAxis] = dSpeed;
-		g_dTime[iAxis] = 0;
 		g_dStartPos[iAxis] = g_Position_Params[iAxis].m_dCmdPos;
 		return 0;
 	}
@@ -25,25 +69,18 @@ int GetCmdPos_Acc(double dSpeed, double dAcc, int iAxis)
 	return 1;
 }
 
-void GetCmdPos_ConstVel(double dSpeed, int iAxis)
+int GetCmdPos_Dec(double dTtotal, double dAcc, int iAxis)
 {
-	g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + dSpeed * g_dTime[iAxis];
-	g_dTime[iAxis] += g_dt;
-	g_dVel[iAxis] = dSpeed;
-}
-
-int GetCmdPos_Dec(double dSpeed, double dAcc, int iAxis)
-{
-	if ((dSpeed > 0 && (g_dVel[iAxis] - dAcc * g_dt) < 0) || (dSpeed < 0 && (g_dVel[iAxis] - dAcc) * g_dt > 0))
+	if ((dAcc > 0 && (g_dVel[iAxis] - dAcc * g_dt) < 0) || (dAcc < 0 && (g_dVel[iAxis] - dAcc * g_dt) > 0))
 	{
-		g_Position_Params[iAxis].m_dCmdPos += pow(g_dVel[iAxis], 2) / (2 * dAcc);
-		g_dVel[iAxis] = 0;
-
+		g_Position_Params[iAxis].m_dCmdPos = g_Position_Params[iAxis].m_dTarPos;
+		
 		return 0;
 	}
 	
-	g_Position_Params[iAxis].m_dCmdPos += g_dVel[iAxis] * g_dt - 0.5 * dAcc * pow(g_dt, 2);
-	g_dVel[iAxis] -= dAcc * g_dt;
+	g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + (g_dDistance[iAxis] - 0.5 * dAcc * pow((dTtotal - g_dTime[iAxis]), 2));
+	g_dVel[iAxis] = dAcc * (dTtotal - g_dTime[iAxis]);
+	g_dTime[iAxis] += g_dt;
 
 	return 1;
 }
@@ -92,90 +129,87 @@ void ECM_intr_Handler(void *CallBackRef)
 				}
 				case MODE_JOG:
 				{
-					// if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT && g_Motion_Params[i].m_dJogSpeed < 0)
-					// {
-					// 	g_Position_Params[i].m_uMode = MODE_IDLE;
-					// 	break;
-					// }
-					// else if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT && g_Motion_Params[i].m_dJogSpeed > 0)
-					// {
-					// 	g_Position_Params[i].m_uMode = MODE_IDLE;
-					// 	break;
-					// }
+					if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT && g_Motion_Params[i].m_dJogSpeed < 0)
+					{
+						g_Position_Params[i].m_uMode = MODE_IDLE;
+						break;
+					}
+					else if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT && g_Motion_Params[i].m_dJogSpeed > 0)
+					{
+						g_Position_Params[i].m_uMode = MODE_IDLE;
+						break;
+					}
 					
-					int iRet;
-
 					if (!g_bStopFlag[i])
 					{
-						iRet = GetCmdPos_Acc(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
-						if (iRet < 0)
+						nret = GetCmdPos_Acc_Jog(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
+						if (nret <= 0)
 						{
-							GetCmdPos_ConstVel(g_Motion_Params[i].m_dJogSpeed, i);
+							GetCmdPos_ConstVel_Jog(g_Motion_Params[i].m_dJogSpeed, i);
 						}
 					}
 					else
 					{
-						GetCmdPos_Dec(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
+						GetCmdPos_Dec_Jog(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
 						g_Position_Params[i].m_uMode = MODE_JOGEND;
 					}
-
 					break;
 				}
 				case MODE_MOTION:
 				{
-					if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT && g_dDistance[i] < 0)
+					if ((g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT) && g_dDistance[i] < 0)
 					{
 						g_Position_Params[i].m_uMode = MODE_IDLE;
 						break;
 					}
-					else if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT && g_dDistance[i] > 0)
+					else if ((g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT) && g_dDistance[i] > 0)
 					{
 						g_Position_Params[i].m_uMode = MODE_IDLE;
 						break;
 					}
-
-					int iRet;
 
 					if (!g_bStopFlag[i])
 					{
-						double Vm, S1, S2, S3;
+						double Vm, S1, S2, S3, T1, T2, T3, Ttotal;
 						
 						S1 = pow(g_Motion_Params[i].m_dMotionSpeed, 2) / (2.0 * g_Motion_Params[i].m_dMotionAcc);
 						S3 = S1;
-						S2 = (g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit) - S1 - S3;
-						if (abs(g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit) - abs(S1) - abs(S3) <= 0.0)
+						S2 = g_dDistance[i] - S1 - S3;
+						if (fabs(g_dDistance[i]) - fabs(S1) - fabs(S3) <= 0.0)
 						{
-							Vm = sqrt(abs(g_Motion_Params[i].m_dMotionAcc) * abs(g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit));
+							Vm = sqrt(fabs(g_Motion_Params[i].m_dMotionAcc) * fabs(g_dDistance[i]));
 							if (g_dDistance[i] < 0)
 							{
 								Vm = -Vm;
 							}
-							S1 = (g_dDistance[i] / g_Motion_Params[i].m_dAxisUnit) / 2.0;
-							if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit < abs(S1))
+							S1 = pow(Vm, 2) / (2.0 * g_Motion_Params[i].m_dMotionAcc);
+							S3 = g_dDistance[i] - S1;
+							T1 = 2.0 * S1 / Vm;
+							T3 = 2.0 * S3 / Vm;
+							Ttotal = T1 + T3;
+							if (fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) <= fabs(S1))
 							{
 								if (abs(g_dVel[i] + g_Motion_Params[i].m_dMotionAcc * g_dt) > Vm)
 								{
 									double dS, dt;
-									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + S1 * g_Motion_Params[i].m_dAxisUnit;
-									dt = g_dt - ((Vm - g_dVel[i]) / g_Motion_Params[i].m_dMotionAcc);
+									dt = g_dt - (T1 - g_dTime[i]);
 									g_dVel[i] = Vm - g_Motion_Params[i].m_dMotionAcc * dt;
 									dS = (pow(Vm, 2) - pow(g_dVel[i], 2)) / (2 * g_Motion_Params[i].m_dMotionAcc);
-									g_Position_Params[i].m_dCmdPos += dS * g_Motion_Params[i].m_dAxisUnit;
+									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + S1 + dS;
+									g_dTime[i] += g_dt;
 									break;
 								}
-								else
-								{
-									g_Position_Params[i].m_dCmdPos += (g_dVel[i] * g_dt + 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dt, 2)) * g_Motion_Params[i].m_dAxisUnit;
-									g_dVel[i] += g_Motion_Params[i].m_dMotionAcc * g_dt;
-									break;
-								}
+
+								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dTime[i], 2);
+								g_dVel[i] = g_Motion_Params[i].m_dMotionAcc * g_dTime[i];
+								g_dTime[i] += g_dt;
+								break;
 							}
 							else
 							{
-								iRet = GetCmdPos_Dec(Vm, g_Motion_Params[i].m_dMotionAcc, i);
-								if (iRet <= 0)
+								nret = GetCmdPos_Dec(Ttotal, g_Motion_Params[i].m_dMotionAcc, i);
+								if (nret <= 0)
 								{
-									g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
 									g_Position_Params[i].m_uMode = MODE_IDLE;
 									break;
 								}
@@ -184,29 +218,36 @@ void ECM_intr_Handler(void *CallBackRef)
 						}
 						else
 						{
-							if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit < abs(S1))
+							T1 = 2.0 * S1 / g_Motion_Params[i].m_dMotionSpeed;
+							T2 = S2 / g_Motion_Params[i].m_dMotionSpeed;
+							T3 = 2.0 * S3 / g_Motion_Params[i].m_dMotionSpeed;
+							Ttotal = T1 + T2 + T3;
+							if (fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) < fabs(S1))
 							{
 								GetCmdPos_Acc(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
 								break;
 							}
-							else if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit > abs(S1) && abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit < abs(S1 + S2))
+							else if (fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) >= fabs(S1) && fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) < abs(S1 + S2))
 							{
-								GetCmdPos_ConstVel(g_Motion_Params[i].m_dMotionSpeed, i);
-								if (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit > abs(S1 + S2))
+								g_Position_Params[i].m_dCmdPos = S1 + g_Motion_Params[i].m_dMotionSpeed * (g_dTime[i] - T1);
+								g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed;
+								g_dTime[i] += g_dt;
+								
+								if (fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) > fabs(S1 + S2))
 								{
 									double dt, dS;
-									dt = (abs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) / g_Motion_Params[i].m_dAxisUnit - abs(S1) - abs(S2)) / abs(g_Motion_Params[i].m_dMotionSpeed);
+									dt = g_dTime[i] - T1 - T2;
 									g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed - g_Motion_Params[i].m_dMotionAcc * dt;
 									dS = (pow(g_Motion_Params[i].m_dMotionSpeed, 2) - pow(g_dVel[i], 2)) / (2 * g_Motion_Params[i].m_dMotionAcc);
-									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + (S1 + S2 + dS) * g_Motion_Params[i].m_dAxisUnit;
+									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + S1 + S2 + dS;
 									break;
 								}
 								break;
 							}
 							else
 							{
-								iRet = GetCmdPos_Dec(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
-								if (iRet <= 0)
+								nret = GetCmdPos_Dec(Ttotal, g_Motion_Params[i].m_dMotionAcc, i);
+								if (nret <= 0)
 								{
 									g_Position_Params[i].m_uMode = MODE_IDLE;
 									break;
@@ -217,13 +258,12 @@ void ECM_intr_Handler(void *CallBackRef)
 					}
 					else // Stop
 					{
-						iRet = GetCmdPos_Dec(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
-						if (iRet <= 0)
+						nret = GetCmdPos_Dec_Jog(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
+						if (nret <= 0)
 						{
 							g_Position_Params[i].m_uMode = MODE_IDLE;
 						}
 					}
-
 					break;
 				}
 				case MODE_HOME:
@@ -232,7 +272,6 @@ void ECM_intr_Handler(void *CallBackRef)
 					{
 						// RxPDO u16CtlWord Bit4 -> 1
 						g_pRxPDOData[i].u16CtlWord = 0x001f;
-						g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
 						// check TxPDO u16StaWord Bit12 -> 1
 						if (g_pTxPDOData[i].u16StaWord & 0x1000)
 						{
@@ -247,25 +286,16 @@ void ECM_intr_Handler(void *CallBackRef)
 						g_pRxPDOData[i].u16CtlWord = 0x010f;
 						g_Position_Params[i].m_uMode = MODE_IDLE;
 					}
-					
+					g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
 					break;
 				}
 				case MODE_JOGEND:
 				{
-					if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT || g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT)
-					{
-						g_Position_Params[i].m_uMode = MODE_IDLE;
-						break;
-					}
-					
-					int iRet;
-
-					iRet = GetCmdPos_Dec(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
+					int iRet = GetCmdPos_Dec_Jog(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
 					if (iRet <= 0)
 					{
 						g_Position_Params[i].m_uMode = MODE_IDLE;
 					}
-
 					break;
 				}
 				default:
