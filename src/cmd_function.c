@@ -149,7 +149,6 @@ void GetAppCmd()
 						g_Motion_Params[iAxis].m_dJogSpeed = fabs(g_Motion_Params[iAxis].m_dJogSpeed);
 						g_Motion_Params[iAxis].m_dJogAcc = fabs(g_Motion_Params[iAxis].m_dJogAcc);
 					}
-
 					g_Position_Params[iAxis].m_uMode = MODE_JOG;
 				}
 				break;
@@ -187,15 +186,7 @@ void GetAppCmd()
 			}
 			case CMD_SET_HOME:
 			{
-				int iAxis, i;
-
-				for (i = 0; i < g_iServoCnt; i++)
-				{
-					if (g_Position_Params[i].m_uMode != MODE_IDLE)
-					{
-						break;
-					}
-				}
+				int iAxis;
 
 				memcpy(&iAxis, pData, 4);
 				g_Position_Params[iAxis].m_uMode = MODE_HOME;
@@ -241,6 +232,7 @@ void GetAppCmd()
 
 				memcpy(&iSlaveCnt, pData, 1);
 				g_iServoCnt = (int)iSlaveCnt;
+				break;
 			}
 			case CMD_GET_CURPOS:
 			{

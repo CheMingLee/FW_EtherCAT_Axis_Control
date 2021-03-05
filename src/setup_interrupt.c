@@ -97,21 +97,10 @@ void ECM_intr_Handler(void *CallBackRef)
 		nret = ECM_EcatPdoFifoDataGet(g_TxData, g_u16PDOSizeRet);
 		if (nret > 0)
 		{
-			g_u32LEDout |= 2;
-
 			for (i = 0; i < g_iServoCnt; i++)
 			{
 				g_Position_Params[i].m_iCurPos = g_pTxPDOData[i].n32AcuPos;
 				g_Position_Params[i].m_uInput = g_pTxPDOData[i].u32DigInputs;
-			}
-		}
-		else
-		{
-			g_u32LEDout &= 0xfffffffd;
-
-			for (i = 0; i < g_iServoCnt; i++)
-			{
-				g_Position_Params[i].m_uMode = MODE_IDLE;
 			}
 		}
 		
@@ -124,7 +113,6 @@ void ECM_intr_Handler(void *CallBackRef)
 					g_dVel[i] = 0;
 					g_dTime[i] = 0;
 					g_bStopFlag[i] = false;
-
 					break;
 				}
 				case MODE_JOG:
@@ -170,6 +158,8 @@ void ECM_intr_Handler(void *CallBackRef)
 
 					if (!g_bStopFlag[i])
 					{
+						g_u32LEDout |= 2;
+						
 						double Vm, S1, S2, S3, T1, T2, T3, Ttotal;
 						
 						S1 = pow(g_Motion_Params[i].m_dMotionSpeed, 2) / (2.0 * g_Motion_Params[i].m_dMotionAcc);
@@ -227,9 +217,9 @@ void ECM_intr_Handler(void *CallBackRef)
 								GetCmdPos_Acc(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
 								break;
 							}
-							else if (fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) >= fabs(S1) && fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) < abs(S1 + S2))
+							else if (fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) >= fabs(S1) && fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) < fabs(S1 + S2))
 							{
-								g_Position_Params[i].m_dCmdPos = S1 + g_Motion_Params[i].m_dMotionSpeed * (g_dTime[i] - T1);
+								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + S1 + g_Motion_Params[i].m_dMotionSpeed * (g_dTime[i] - T1);
 								g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed;
 								g_dTime[i] += g_dt;
 								
@@ -258,6 +248,8 @@ void ECM_intr_Handler(void *CallBackRef)
 					}
 					else // Stop
 					{
+						g_u32LEDout &= 0xfffffffd;
+						
 						nret = GetCmdPos_Dec_Jog(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
 						if (nret <= 0)
 						{
@@ -272,8 +264,9 @@ void ECM_intr_Handler(void *CallBackRef)
 					{
 						// RxPDO u16CtlWord Bit4 -> 1
 						g_pRxPDOData[i].u16CtlWord = 0x001f;
-						// check TxPDO u16StaWord Bit12 -> 1
-						if (g_pTxPDOData[i].u16StaWord & 0x1000)
+						g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
+						// check TxPDO u16StaWord Bit10 -> 1
+						if (g_pTxPDOData[i].u16StaWord & 0x0400)
 						{
 							// RxPDO u16CtlWord Bit4 -> 0
 							g_pRxPDOData[i].u16CtlWord = 0x000f;
@@ -284,9 +277,9 @@ void ECM_intr_Handler(void *CallBackRef)
 					{
 						// RxPDO u16CtlWord Bit4 -> 0, Bit8 -> 1
 						g_pRxPDOData[i].u16CtlWord = 0x010f;
+						g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
 						g_Position_Params[i].m_uMode = MODE_IDLE;
 					}
-					g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
 					break;
 				}
 				case MODE_JOGEND:
