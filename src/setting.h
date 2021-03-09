@@ -82,11 +82,23 @@ extern uint8_t g_u8CmdIdx;
 extern MOTION_PARAMS g_Motion_Params[TEST_SERVO_CNT];
 extern POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
 extern bool g_bStopFlag[TEST_SERVO_CNT];
-extern double g_dDistance[TEST_SERVO_CNT]; // pulse
-extern double g_dStartPos[TEST_SERVO_CNT]; // pulse
+extern bool g_bHomingFlag[TEST_SERVO_CNT];
+extern int g_iCnt[TEST_SERVO_CNT];
+extern double g_dDistance[TEST_SERVO_CNT];
+extern double g_dStartPos[TEST_SERVO_CNT];
+extern int g_iDirection[TEST_SERVO_CNT];
 extern double g_dVel[TEST_SERVO_CNT];
 extern double g_dTime[TEST_SERVO_CNT];
-extern double g_dt; // s
+extern double g_dVm[TEST_SERVO_CNT];
+extern double g_dS[TEST_SERVO_CNT];
+extern double g_dS1[TEST_SERVO_CNT];
+extern double g_dS2[TEST_SERVO_CNT];
+extern double g_dS3[TEST_SERVO_CNT];
+extern double g_dT1[TEST_SERVO_CNT];
+extern double g_dT2[TEST_SERVO_CNT];
+extern double g_dT3[TEST_SERVO_CNT];
+extern double g_dTtotal[TEST_SERVO_CNT];
+extern double g_dt;
 extern bool g_bInterruptFlag;
 extern int g_iServoCnt;
 extern uint16_t g_u16PDOSize;
@@ -96,5 +108,6 @@ extern uint8_t g_TxData[TEST_SPI_DATA_SIZE];
 extern XScuGic g_Intc;
 extern RXPDO_ST_DEF_T *g_pRxPDOData;
 extern TXPDO_ST_DEF_T *g_pTxPDOData;
+
 extern u32 g_u32LEDout;
 extern u16 g_u16JF8out;

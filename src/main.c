@@ -6,10 +6,22 @@ uint8_t g_u8CmdIdx;
 MOTION_PARAMS g_Motion_Params[TEST_SERVO_CNT];
 POSITION_PARAMS g_Position_Params[TEST_SERVO_CNT];
 bool g_bStopFlag[TEST_SERVO_CNT];
-double g_dDistance[TEST_SERVO_CNT]; // pulse
-double g_dStartPos[TEST_SERVO_CNT]; // pulse
+bool g_bHomingFlag[TEST_SERVO_CNT];
+int g_iCnt[TEST_SERVO_CNT];
+double g_dDistance[TEST_SERVO_CNT];
+double g_dStartPos[TEST_SERVO_CNT];
+int g_iDirection[TEST_SERVO_CNT];
 double g_dVel[TEST_SERVO_CNT];
 double g_dTime[TEST_SERVO_CNT];
+double g_dVm[TEST_SERVO_CNT];
+double g_dS[TEST_SERVO_CNT];
+double g_dS1[TEST_SERVO_CNT];
+double g_dS2[TEST_SERVO_CNT];
+double g_dS3[TEST_SERVO_CNT];
+double g_dT1[TEST_SERVO_CNT];
+double g_dT2[TEST_SERVO_CNT];
+double g_dT3[TEST_SERVO_CNT];
+double g_dTtotal[TEST_SERVO_CNT];
 double g_dt;
 bool g_bInterruptFlag;
 int g_iServoCnt;
@@ -53,11 +65,23 @@ void InitParameters()
 		g_Position_Params[i].m_uInput = 0;
 
 		g_bStopFlag[i] = false;
+		g_bHomingFlag[i] = false;
+		g_iCnt[i] = 5;
 
 		g_dDistance[i] = 0.0;
 		g_dStartPos[i] = 0.0;
+		g_iDirection[i] = 1;
 		g_dVel[i] = 0.0;
 		g_dTime[i] = 0.0;
+		g_dVm[i] = 0.0;
+		g_dS[i] = 0.0;
+		g_dS1[i] = 0.0;
+		g_dS2[i] = 0.0;
+		g_dS3[i] = 0.0;
+		g_dT1[i] = 0.0;
+		g_dT2[i] = 0.0;
+		g_dT3[i] = 0.0;
+		g_dTtotal[i] = 0.0;
 	}
 
 	g_dt = TEST_CYCTIME * pow(10, -9);

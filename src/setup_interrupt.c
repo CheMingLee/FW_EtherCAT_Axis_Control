@@ -47,41 +47,39 @@ int GetCmdPos_Dec_Jog(double dSpeed, double dAcc, int iAxis)
 
 int GetCmdPos_Acc(double dSpeed, double dAcc, int iAxis)
 {
-	if (fabs(g_dVel[iAxis]) >= fabs(dSpeed))
+	if (g_dVel[iAxis] >= dSpeed)
 	{
 		return -1;
 	}
-	else if (fabs(g_dVel[iAxis] + dAcc * g_dt) > fabs(dSpeed))
+	else if (g_dVel[iAxis] + dAcc * g_dt > dSpeed)
 	{
-		double dS, dt;
-		dS = pow(dSpeed, 2) / (2 * dAcc);
-		dt = g_dt - ((dSpeed - g_dVel[iAxis]) / dAcc);
-		g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + dS + dSpeed * dt;
+		double dt;
+		dt = g_dt - (g_dT1[iAxis] - g_dTime[iAxis]);
+		g_dS[iAxis] = g_dS1[iAxis] + dSpeed * dt;
+		g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_iDirection[iAxis];
 		g_dVel[iAxis] = dSpeed;
-		g_dStartPos[iAxis] = g_Position_Params[iAxis].m_dCmdPos;
+		g_dTime[iAxis] += g_dt;
 		return 0;
 	}
-
-	g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + 0.5 * dAcc * pow(g_dTime[iAxis], 2);
+	g_dS[iAxis] = 0.5 * dAcc * pow(g_dTime[iAxis], 2);
+	g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_iDirection[iAxis];
 	g_dVel[iAxis] = dAcc * g_dTime[iAxis];
 	g_dTime[iAxis] += g_dt;
-
 	return 1;
 }
 
-int GetCmdPos_Dec(double dTtotal, double dAcc, int iAxis)
+int GetCmdPos_Dec(double dSpeed, double dAcc, int iAxis)
 {
-	if ((dAcc > 0 && (g_dVel[iAxis] - dAcc * g_dt) < 0) || (dAcc < 0 && (g_dVel[iAxis] - dAcc * g_dt) > 0))
+	if (g_dVel[iAxis] - dAcc * g_dt <= 0)
 	{
 		g_Position_Params[iAxis].m_dCmdPos = g_Position_Params[iAxis].m_dTarPos;
-		
 		return 0;
 	}
 	
-	g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + (g_dDistance[iAxis] - 0.5 * dAcc * pow((dTtotal - g_dTime[iAxis]), 2));
-	g_dVel[iAxis] = dAcc * (dTtotal - g_dTime[iAxis]);
+	g_dS[iAxis] = g_dS1[iAxis] + g_dS2[iAxis] + dSpeed * (g_dTime[iAxis] - g_dT2[iAxis] - g_dT1[iAxis]) - 0.5 * dAcc * pow((g_dTime[iAxis] - g_dT2[iAxis] - g_dT1[iAxis]), 2);
+	g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_iDirection[iAxis];
+	g_dVel[iAxis] = dSpeed - dAcc * (g_dTime[iAxis] - g_dT2[iAxis] - g_dT1[iAxis]);
 	g_dTime[iAxis] += g_dt;
-
 	return 1;
 }
 
@@ -117,19 +115,23 @@ void ECM_intr_Handler(void *CallBackRef)
 			{
 				case MODE_IDLE:
 				{
-					g_dVel[i] = 0;
-					g_dTime[i] = 0;
+					g_dVel[i] = 0.0;
+					g_dTime[i] = 0.0;
+					g_dS[i] = 0.0;
 					g_bStopFlag[i] = false;
+					g_bHomingFlag[i] = false;
+					g_iCnt[i] = 5;
+					g_pRxPDOData[i].u16CtlWord = 0x000f;
 					break;
 				}
 				case MODE_JOG:
 				{
-					if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT && g_Motion_Params[i].m_dJogSpeed < 0)
+					if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT && g_Motion_Params[i].m_dJogSpeed < 0.0)
 					{
 						g_Position_Params[i].m_uMode = MODE_IDLE;
 						break;
 					}
-					else if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT && g_Motion_Params[i].m_dJogSpeed > 0)
+					else if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT && g_Motion_Params[i].m_dJogSpeed > 0.0)
 					{
 						g_Position_Params[i].m_uMode = MODE_IDLE;
 						break;
@@ -154,12 +156,7 @@ void ECM_intr_Handler(void *CallBackRef)
 				}
 				case MODE_MOTION:
 				{
-					if ((g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT) && g_dDistance[i] < 0)
-					{
-						g_Position_Params[i].m_uMode = MODE_IDLE;
-						break;
-					}
-					else if ((g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT) && g_dDistance[i] > 0)
+					if ((g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT) || (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT))
 					{
 						g_Position_Params[i].m_uMode = MODE_IDLE;
 						break;
@@ -168,100 +165,94 @@ void ECM_intr_Handler(void *CallBackRef)
 					g_pRxPDOData[i].u16CtlWord = 0x000f;
 
 					if (!g_bStopFlag[i])
-					{	
-						double Vm, S1, S2, S3, T1, T2, T3, Ttotal;
-						
-						S1 = pow(g_Motion_Params[i].m_dMotionSpeed, 2) / (2.0 * g_Motion_Params[i].m_dMotionAcc);
-						S3 = S1;
-						S2 = g_dDistance[i] - S1 - S3;
-						if (fabs(g_dDistance[i]) - fabs(S1) - fabs(S3) <= 0.0)
+					{
+						if (g_dS2[i] <= 0.0)
 						{
-							Vm = sqrt(fabs(g_Motion_Params[i].m_dMotionAcc) * fabs(g_dDistance[i]));
-							if (g_dDistance[i] < 0)
+							if (g_dS[i] < g_dS1[i])
 							{
-								Vm = -Vm;
-							}
-							S1 = pow(Vm, 2) / (2.0 * g_Motion_Params[i].m_dMotionAcc);
-							S3 = g_dDistance[i] - S1;
-							T1 = 2.0 * S1 / Vm;
-							T3 = 2.0 * S3 / Vm;
-							Ttotal = T1 + T3;
-							if (fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) <= fabs(S1))
-							{
-								if (abs(g_dVel[i] + g_Motion_Params[i].m_dMotionAcc * g_dt) > Vm)
+								if (g_dVel[i] + g_Motion_Params[i].m_dMotionAcc * g_dt > g_dVm[i])
 								{
-									double dS, dt;
-									dt = g_dt - (T1 - g_dTime[i]);
-									g_dVel[i] = Vm - g_Motion_Params[i].m_dMotionAcc * dt;
-									dS = (pow(Vm, 2) - pow(g_dVel[i], 2)) / (2 * g_Motion_Params[i].m_dMotionAcc);
-									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + S1 + dS;
+									double dt;
+									dt = g_dt - (g_dT1[i] - g_dTime[i]);
+									g_dS[i] = g_dS1[i] + g_dVm[i] * dt - 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(dt, 2);
+									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_iDirection[i];
+									g_dVel[i] = g_dVm[i] - g_Motion_Params[i].m_dMotionAcc * dt;
 									g_dTime[i] += g_dt;
 									break;
 								}
-
-								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dTime[i], 2);
+								g_dS[i] = 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dTime[i], 2);
+								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_iDirection[i];
 								g_dVel[i] = g_Motion_Params[i].m_dMotionAcc * g_dTime[i];
 								g_dTime[i] += g_dt;
 								break;
 							}
-							else
+							else if (g_dS[i] >= g_dS1[i] && g_dS[i] < g_dDistance[i])
 							{
-								nret = GetCmdPos_Dec(Ttotal, g_Motion_Params[i].m_dMotionAcc, i);
+								nret = GetCmdPos_Dec(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
 								if (nret <= 0)
 								{
 									g_Position_Params[i].m_uMode = MODE_IDLE;
-									break;
 								}
 								break;
+							}
+							else
+							{
+								g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
+								g_Position_Params[i].m_uMode = MODE_IDLE;
 							}
 						}
 						else
 						{
-							T1 = 2.0 * S1 / g_Motion_Params[i].m_dMotionSpeed;
-							T2 = S2 / g_Motion_Params[i].m_dMotionSpeed;
-							T3 = 2.0 * S3 / g_Motion_Params[i].m_dMotionSpeed;
-							Ttotal = T1 + T2 + T3;
-							if (fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) < fabs(S1))
+							if (g_dS[i] < g_dS1[i])
 							{
-								g_u32LEDout |= 2;
-
 								GetCmdPos_Acc(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
 								break;
 							}
-							else if (fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) >= fabs(S1) && fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) < fabs(S1 + S2))
+							else if (g_dS[i] >= g_dS1[i] && g_dS[i] < g_dS1[i] + g_dS2[i])
 							{
-								g_u32LEDout &= 0xfffffffd;
-								
-								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + S1 + g_Motion_Params[i].m_dMotionSpeed * (g_dTime[i] - T1);
+								g_dS[i] = g_dS1[i] + g_Motion_Params[i].m_dMotionSpeed * (g_dTime[i] - g_dT1[i]);
+								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_iDirection[i];
 								g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed;
-								g_dTime[i] += g_dt;
-								
-								if (fabs(g_Position_Params[i].m_dCmdPos - g_dStartPos[i]) > fabs(S1 + S2))
+								if (g_dS[i] > g_dS1[i] + g_dS2[i])
 								{
-									double dt, dS;
-									dt = g_dTime[i] - T1 - T2;
+									double dt;
+									dt = g_dTime[i] - g_dT1[i] - g_dT2[i];
 									g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed - g_Motion_Params[i].m_dMotionAcc * dt;
-									dS = (pow(g_Motion_Params[i].m_dMotionSpeed, 2) - pow(g_dVel[i], 2)) / (2 * g_Motion_Params[i].m_dMotionAcc);
-									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + S1 + S2 + dS;
-									break;
+									g_dS[i] = g_dS1[i] + g_dS2[i] + g_Motion_Params[i].m_dMotionSpeed * dt - 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(dt, 2);
+									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_iDirection[i];
+								}
+								g_dTime[i] += g_dt;
+								break;
+							}
+							else if (g_dS[i] >= g_dS1[i] + g_dS2[i] && g_dS[i] < g_dDistance[i])
+							{
+								nret = GetCmdPos_Dec(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
+								if (nret <= 0)
+								{
+									g_Position_Params[i].m_uMode = MODE_IDLE;
 								}
 								break;
 							}
 							else
 							{
-								nret = GetCmdPos_Dec(Ttotal, g_Motion_Params[i].m_dMotionAcc, i);
-								if (nret <= 0)
-								{
-									g_Position_Params[i].m_uMode = MODE_IDLE;
-									break;
-								}
-								break;
+								g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
+								g_Position_Params[i].m_uMode = MODE_IDLE;
 							}
 						}
 					}
 					else // Stop
 					{	
-						nret = GetCmdPos_Dec_Jog(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
+						double dStopSpeed, dStopAcc;
+						
+						dStopSpeed = g_Motion_Params[i].m_dMotionSpeed;
+						dStopAcc = g_Motion_Params[i].m_dMotionAcc;
+						if (g_iDirection[i] < 0)
+						{
+							dStopSpeed = dStopSpeed * g_iDirection[i];
+							dStopAcc = dStopAcc * g_iDirection[i];
+						}
+						
+						nret = GetCmdPos_Dec_Jog(dStopSpeed, dStopAcc, i);
 						if (nret <= 0)
 						{
 							g_Position_Params[i].m_uMode = MODE_IDLE;
@@ -273,13 +264,32 @@ void ECM_intr_Handler(void *CallBackRef)
 				{
 					if (!g_bStopFlag[i])
 					{	
+						g_u32LEDout |= 2;
+
 						// RxPDO u16CtlWord Bit4 -> 1
 						g_pRxPDOData[i].u16CtlWord = 0x001f;
-						if (g_Position_Params[i].m_iCurPos == 0)
+						if (g_bHomingFlag[i])
 						{
-							// RxPDO u16CtlWord Bit4 -> 0
-							g_pRxPDOData[i].u16CtlWord = 0x000f;
-							g_Position_Params[i].m_uMode = MODE_IDLE;
+							// TxPDO u16StaWord Bit12 -> 1
+							if (g_pTxPDOData[i].u16StaWord & 0x1000)
+							{
+								g_u32LEDout &= 0xfffffffd;
+
+								// RxPDO u16CtlWord Bit4 -> 0
+								g_pRxPDOData[i].u16CtlWord = 0x000f;
+								g_Position_Params[i].m_uMode = MODE_IDLE;
+								g_bHomingFlag[i] = false;
+								g_iCnt[i] = 5;
+								g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
+								break;
+							}
+						}
+						else
+						{
+							if (g_iCnt[i]-- < 0)
+							{
+								g_bHomingFlag[i] = true;
+							}
 						}
 					}
 					else
@@ -287,10 +297,10 @@ void ECM_intr_Handler(void *CallBackRef)
 						// RxPDO u16CtlWord Bit4 -> 0, Bit8 -> 1
 						g_pRxPDOData[i].u16CtlWord = 0x010f;
 						g_Position_Params[i].m_uMode = MODE_IDLE;
+						g_bHomingFlag[i] = false;
+						g_iCnt[i] = 5;
 					}
-
 					g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
-
 					break;
 				}
 				case MODE_JOGEND:
