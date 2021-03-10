@@ -136,13 +136,13 @@ void GetAppCmd()
 				memcpy(&iDirection, pData + 4, 4);
 				if (iDirection <= 0)
 				{
-					g_iDirection[iAxis] = -1;
+					g_dDirection[iAxis] = -1;
 					g_Motion_Params[iAxis].m_dJogSpeed = -fabs(g_Motion_Params[iAxis].m_dJogSpeed);
 					g_Motion_Params[iAxis].m_dJogAcc = -fabs(g_Motion_Params[iAxis].m_dJogAcc);
 				}
 				else
 				{
-					g_iDirection[iAxis] = 1;
+					g_dDirection[iAxis] = 1;
 					g_Motion_Params[iAxis].m_dJogSpeed = fabs(g_Motion_Params[iAxis].m_dJogSpeed);
 					g_Motion_Params[iAxis].m_dJogAcc = fabs(g_Motion_Params[iAxis].m_dJogAcc);
 				}
@@ -166,12 +166,12 @@ void GetAppCmd()
 				}
 				else if (g_dDistance[iAxis] < 0)
 				{
-					g_iDirection[iAxis] = -1;
+					g_dDirection[iAxis] = -1.0;
 					g_dDistance[iAxis] = fabs(g_dDistance[iAxis]);
 				}
 				else
 				{
-					g_iDirection[iAxis] = 1;
+					g_dDirection[iAxis] = 1.0;
 				}
 				g_dS1[iAxis] = pow(g_Motion_Params[iAxis].m_dMotionSpeed, 2) / (2.0 * g_Motion_Params[iAxis].m_dMotionAcc);
 				g_dS3[iAxis] = g_dS1[iAxis];

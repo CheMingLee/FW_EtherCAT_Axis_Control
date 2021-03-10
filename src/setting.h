@@ -86,7 +86,7 @@ extern bool g_bHomingFlag[TEST_SERVO_CNT];
 extern int g_iCnt[TEST_SERVO_CNT];
 extern double g_dDistance[TEST_SERVO_CNT];
 extern double g_dStartPos[TEST_SERVO_CNT];
-extern int g_iDirection[TEST_SERVO_CNT];
+extern double g_dDirection[TEST_SERVO_CNT];
 extern double g_dVel[TEST_SERVO_CNT];
 extern double g_dTime[TEST_SERVO_CNT];
 extern double g_dVm[TEST_SERVO_CNT];

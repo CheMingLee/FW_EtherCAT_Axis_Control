@@ -10,7 +10,7 @@ bool g_bHomingFlag[TEST_SERVO_CNT];
 int g_iCnt[TEST_SERVO_CNT];
 double g_dDistance[TEST_SERVO_CNT];
 double g_dStartPos[TEST_SERVO_CNT];
-int g_iDirection[TEST_SERVO_CNT];
+double g_dDirection[TEST_SERVO_CNT];
 double g_dVel[TEST_SERVO_CNT];
 double g_dTime[TEST_SERVO_CNT];
 double g_dVm[TEST_SERVO_CNT];
@@ -70,7 +70,7 @@ void InitParameters()
 
 		g_dDistance[i] = 0.0;
 		g_dStartPos[i] = 0.0;
-		g_iDirection[i] = 1;
+		g_dDirection[i] = 1.0;
 		g_dVel[i] = 0.0;
 		g_dTime[i] = 0.0;
 		g_dVm[i] = 0.0;
