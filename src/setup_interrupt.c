@@ -45,44 +45,6 @@ int GetCmdPos_Dec_Jog(double dSpeed, double dAcc, int iAxis)
 	return 1;
 }
 
-int GetCmdPos_Acc(double dSpeed, double dAcc, int iAxis)
-{
-	if (g_dVel[iAxis] >= dSpeed)
-	{
-		return -1;
-	}
-	else if (g_dVel[iAxis] + dAcc * g_dt > dSpeed)
-	{
-		double dt;
-		dt = g_dt - (g_dT1[iAxis] - g_dTime[iAxis]);
-		g_dS[iAxis] = g_dS1[iAxis] + dSpeed * dt;
-		g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_dDirection[iAxis];
-		g_dVel[iAxis] = dSpeed;
-		g_dTime[iAxis] += g_dt;
-		return 0;
-	}
-	g_dS[iAxis] = 0.5 * dAcc * pow(g_dTime[iAxis], 2);
-	g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_dDirection[iAxis];
-	g_dVel[iAxis] = dAcc * g_dTime[iAxis];
-	g_dTime[iAxis] += g_dt;
-	return 1;
-}
-
-int GetCmdPos_Dec(double dSpeed, double dAcc, int iAxis)
-{
-	if (g_dVel[iAxis] - dAcc * g_dt <= 0)
-	{
-		g_Position_Params[iAxis].m_dCmdPos = g_Position_Params[iAxis].m_dTarPos;
-		return 0;
-	}
-	
-	g_dS[iAxis] = g_dS1[iAxis] + g_dS2[iAxis] + dSpeed * (g_dTime[iAxis] - g_dT2[iAxis] - g_dT1[iAxis]) - 0.5 * dAcc * pow((g_dTime[iAxis] - g_dT2[iAxis] - g_dT1[iAxis]), 2);
-	g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_dDirection[iAxis];
-	g_dVel[iAxis] = dSpeed - dAcc * (g_dTime[iAxis] - g_dT2[iAxis] - g_dT1[iAxis]);
-	g_dTime[iAxis] += g_dt;
-	return 1;
-}
-
 void ECM_intr_Handler(void *CallBackRef)
 {
 	int i;
@@ -166,78 +128,30 @@ void ECM_intr_Handler(void *CallBackRef)
 
 					if (!g_bStopFlag[i])
 					{
-						if (g_dS2[i] <= 0.0)
+						g_dTime[i] += g_dt;
+						if (g_dTime[i] <= g_dT1[i])
 						{
-							if (g_dS[i] < g_dS1[i])
-							{
-								if (g_dVel[i] + g_Motion_Params[i].m_dMotionAcc * g_dt > g_dVm[i])
-								{
-									double dt;
-									dt = g_dt - (g_dT1[i] - g_dTime[i]);
-									g_dS[i] = g_dS1[i] + g_dVm[i] * dt - 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(dt, 2);
-									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
-									g_dVel[i] = g_dVm[i] - g_Motion_Params[i].m_dMotionAcc * dt;
-									g_dTime[i] += g_dt;
-									break;
-								}
-								g_dS[i] = 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dTime[i], 2);
-								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
-								g_dVel[i] = g_Motion_Params[i].m_dMotionAcc * g_dTime[i];
-								g_dTime[i] += g_dt;
-								break;
-							}
-							else if (g_dS[i] >= g_dS1[i] && g_dS[i] < g_dDistance[i])
-							{
-								nret = GetCmdPos_Dec(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
-								if (nret <= 0)
-								{
-									g_Position_Params[i].m_uMode = MODE_IDLE;
-								}
-								break;
-							}
-							else
-							{
-								g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
-								g_Position_Params[i].m_uMode = MODE_IDLE;
-							}
+							g_dVel[i] = g_Motion_Params[i].m_dMotionAcc * g_dTime[i];
+							g_dS[i] = 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dTime[i], 2);
+							g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
+						}
+						else if (g_dTime[i] > g_dT1[i] && g_dTime[i] <= g_dT1[i] + g_dT2[i])
+						{
+							g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed;
+							g_dS[i] = g_dS1[i] + g_Motion_Params[i].m_dMotionSpeed * (g_dTime[i] - g_dT1[i]);
+							g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
+						}
+						else if (g_dTime[i] > g_dT1[i] + g_dT2[i] && g_dTime[i] <= g_dTtotal[i])
+						{
+							g_dVel[i] = g_dVm[i] - g_Motion_Params[i].m_dMotionAcc * (g_dTime[i] - g_dT1[i] - g_dT2[i]);
+							g_dS[i] = g_dS1[i] + g_dS2[i] + g_dVm[i] * (g_dTime[i] - g_dT1[i] - g_dT2[i]) - 0.5 * g_Motion_Params[i].m_dMotionAcc * pow((g_dTime[i] - g_dT1[i] - g_dT2[i]), 2);
+							g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
 						}
 						else
 						{
-							if (g_dS[i] < g_dS1[i])
-							{
-								GetCmdPos_Acc(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
-								break;
-							}
-							else if (g_dS[i] >= g_dS1[i] && g_dS[i] < g_dS1[i] + g_dS2[i])
-							{
-								g_dS[i] = g_dS1[i] + g_Motion_Params[i].m_dMotionSpeed * (g_dTime[i] - g_dT1[i]);
-								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
-								g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed;
-								if (g_dS[i] > g_dS1[i] + g_dS2[i])
-								{
-									double dt;
-									dt = g_dTime[i] - g_dT1[i] - g_dT2[i];
-									g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed - g_Motion_Params[i].m_dMotionAcc * dt;
-									g_dS[i] = g_dS1[i] + g_dS2[i] + g_Motion_Params[i].m_dMotionSpeed * dt - 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(dt, 2);
-									g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
-								}
-								g_dTime[i] += g_dt;
-								break;
-							}
-							else if (g_dS[i] >= g_dS1[i] + g_dS2[i] && g_dS[i] < g_dDistance[i])
-							{
-								nret = GetCmdPos_Dec(g_Motion_Params[i].m_dMotionSpeed, g_Motion_Params[i].m_dMotionAcc, i);
-								if (nret <= 0)
-								{
-									g_Position_Params[i].m_uMode = MODE_IDLE;
-								}
-								break;
-							}
-							else
-							{
-								g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
-								g_Position_Params[i].m_uMode = MODE_IDLE;
-							}
+							g_dVel[i] = 0.0;
+							g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
+							g_Position_Params[i].m_uMode = MODE_IDLE;
 						}
 					}
 					else // Stop

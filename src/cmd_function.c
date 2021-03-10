@@ -189,7 +189,7 @@ void GetAppCmd()
 				}
 				else
 				{
-					g_dVm[iAxis] = 0.0;
+					g_dVm[iAxis] = g_Motion_Params[iAxis].m_dMotionSpeed;
 					g_dT1[iAxis] = 2.0 * g_dS1[iAxis] / g_Motion_Params[iAxis].m_dMotionSpeed;
 					g_dT2[iAxis] = g_dS2[iAxis] / g_Motion_Params[iAxis].m_dMotionSpeed;
 					g_dT3[iAxis] = 2.0 * g_dS3[iAxis] / g_Motion_Params[iAxis].m_dMotionSpeed;
