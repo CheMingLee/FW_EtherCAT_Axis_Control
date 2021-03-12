@@ -299,6 +299,80 @@ void GetAppCmd()
 				SetFlagOutOne();
 				break;
 			}
+			case CMD_SET_RUNFILE:
+			{
+				int iAxis;
+
+				memcpy(&iAxis, pData, 4);
+				g_Position_Params[iAxis].m_uMode = MODE_RUNFILE;
+				break;
+			}
+			case CMD_SET_RUNFILE_BEGINPOS:
+			{
+				int iAxis;
+				FILE_CMD CmdBuf;
+
+				memcpy(&CmdBuf, pData, sizeof(FILE_CMD));
+
+				for (iAxis = 0; iAxis < 2; iAxis++)
+				{
+					g_Position_Params[iAxis].m_dTarPos = CmdBuf.m_dParams[iAxis];
+					g_dStartPos[iAxis] = g_Position_Params[iAxis].m_dCmdPos;
+					g_dDistance[iAxis] = g_Position_Params[iAxis].m_dTarPos - g_dStartPos[iAxis];
+					if (g_dDistance[iAxis] == 0)
+					{
+						break;
+					}
+					else if (g_dDistance[iAxis] < 0)
+					{
+						g_dDirection[iAxis] = -1.0;
+						g_dDistance[iAxis] = fabs(g_dDistance[iAxis]);
+					}
+					else
+					{
+						g_dDirection[iAxis] = 1.0;
+					}
+					g_dS1[iAxis] = pow(g_Motion_Params[iAxis].m_dMotionSpeed, 2) / (2.0 * g_Motion_Params[iAxis].m_dMotionAcc);
+					g_dS3[iAxis] = g_dS1[iAxis];
+					g_dS2[iAxis] = g_dDistance[iAxis] - g_dS1[iAxis] - g_dS3[iAxis];
+					if (g_dS2[iAxis] <= 0.0)
+					{
+						g_dVm[iAxis] = sqrt(g_Motion_Params[iAxis].m_dMotionAcc * g_dDistance[iAxis]);
+						g_dS1[iAxis] = pow(g_dVm[iAxis], 2) / (2.0 * g_Motion_Params[iAxis].m_dMotionAcc);
+						g_dS2[iAxis] = 0.0;
+						g_dS3[iAxis] = g_dDistance[iAxis] - g_dS1[iAxis];
+						g_dT1[iAxis] = 2.0 * g_dS1[iAxis] / g_dVm[iAxis];
+						g_dT2[iAxis] = 0.0;
+						g_dT3[iAxis] = 2.0 * g_dS3[iAxis] / g_dVm[iAxis];
+						g_dTtotal[iAxis] = g_dT1[iAxis] + g_dT3[iAxis];
+					}
+					else
+					{
+						g_dVm[iAxis] = g_Motion_Params[iAxis].m_dMotionSpeed;
+						g_dT1[iAxis] = 2.0 * g_dS1[iAxis] / g_Motion_Params[iAxis].m_dMotionSpeed;
+						g_dT2[iAxis] = g_dS2[iAxis] / g_Motion_Params[iAxis].m_dMotionSpeed;
+						g_dT3[iAxis] = 2.0 * g_dS3[iAxis] / g_Motion_Params[iAxis].m_dMotionSpeed;
+						g_dTtotal[iAxis] = g_dT1[iAxis] + g_dT2[iAxis] + g_dT3[iAxis];
+					}
+				}
+				break;
+			}
+			case CMD_SET_RUNFILE_CMDCNT:
+			{
+				memcpy(&g_iFileCmdCnt, pData, 4);
+				break;
+			}
+			case CMD_SET_RUNFILE_CMD:
+			{
+				int iIndex;
+
+				memcpy(&iIndex, pData, 4);
+				if (iIndex < 10)
+				{
+					memcpy(&g_CmdBuf[iIndex], pData + 4, sizeof(FILE_CMD));
+				}
+				break;
+			}
 			default:
 				break;
 		}

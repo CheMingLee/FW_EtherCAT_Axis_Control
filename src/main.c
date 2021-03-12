@@ -33,12 +33,17 @@ XScuGic g_Intc;
 RXPDO_ST_DEF_T *g_pRxPDOData;
 TXPDO_ST_DEF_T *g_pTxPDOData;
 
+FILE_CMD g_CmdBuf[10];
+int g_iCmdBufCnt;
+bool g_bCmdDoneFlag[2];
+int g_iFileCmdCnt;
+
 u32 g_u32LEDout;
 u16 g_u16JF8out;
 
 void InitParameters()
 {
-	int i;
+	int i, j;
 
 	for (i = 0; i < PKG_MAX_SIZE; i++)
 	{
@@ -99,6 +104,24 @@ void InitParameters()
 
 	g_pRxPDOData = (RXPDO_ST_DEF_T *)g_RxData;
 	g_pTxPDOData = (TXPDO_ST_DEF_T *)g_TxData;
+
+	for (i = 0; i < 10; i++)
+	{
+		g_CmdBuf[i].m_iID = 0;
+		for (j = 0; j < 5; j++)
+		{
+			g_CmdBuf[i].m_dParams[j] = 0.0;
+		}
+	}
+	
+	g_iCmdBufCnt = 0;
+
+	for (i = 0; i < 2; i++)
+	{
+		g_bCmdDoneFlag[i] = false;
+	}
+	
+	g_iFileCmdCnt = 0;
 
 	g_u32LEDout = 0;
 	g_u16JF8out = 0;

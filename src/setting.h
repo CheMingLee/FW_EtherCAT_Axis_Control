@@ -43,6 +43,10 @@
 #define CMD_GET_DIGINPUT 16
 #define CMD_SET_INTR_DISABLE 17
 #define CMD_GET_CMDPOS 18
+#define CMD_SET_RUNFILE 19
+#define CMD_SET_RUNFILE_BEGINPOS 20
+#define CMD_SET_RUNFILE_CMDCNT 21
+#define CMD_SET_RUNFILE_CMD 22
 
 // mode define
 #define MODE_IDLE 0
@@ -50,11 +54,36 @@
 #define MODE_MOTION 2
 #define MODE_HOME 3
 #define MODE_JOGEND 4
+#define MODE_RUNFILE 5
 
 // digital input define
 #define DIGINPUT_LIMIT_LEFT 0x01
 #define DIGINPUT_LIMIT_RIGHT 0x02
 #define DIGINPUT_HMOE 0x04
+
+// Cmd file define
+#define BEGIN 0
+#define SPEED 1
+#define ACC 2
+#define LINEXY 3
+#define FLINEXY 4
+#define ARCXY 5
+#define FARCXY 6
+#define END 7
+
+// File cmd structure
+typedef struct file_cmd{
+	int m_iID;
+	double m_dParams[5];
+}FILE_CMD;
+
+// Run File params structure
+typedef struct cmd_file_params{
+	double m_dSpeed;
+	double m_dFSpeed;
+	double m_dAcc;
+	double m_dFAcc;
+} CMD_FILE_PARAMS;
 
 // Params structure
 typedef struct motion_params{
@@ -108,6 +137,11 @@ extern uint8_t g_TxData[TEST_SPI_DATA_SIZE];
 extern XScuGic g_Intc;
 extern RXPDO_ST_DEF_T *g_pRxPDOData;
 extern TXPDO_ST_DEF_T *g_pTxPDOData;
+
+extern FILE_CMD g_CmdBuf[10];
+extern int g_iCmdBufCnt;
+extern bool g_bCmdDoneFlag[2];
+extern int g_iFileCmdCnt;
 
 extern u32 g_u32LEDout;
 extern u16 g_u16JF8out;
