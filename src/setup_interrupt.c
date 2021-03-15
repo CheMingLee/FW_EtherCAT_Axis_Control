@@ -45,82 +45,6 @@ int GetCmdPos_Dec_Jog(double dSpeed, double dAcc, int iAxis)
 	return 1;
 }
 
-int GetCmdPos_RunFile(int iAxis)
-{
-	switch (g_CmdBuf[g_iCmdBufCnt].m_iID)
-	{
-		case BEGIN:
-		{	
-			g_u32LEDout |= 2;
-
-			g_dTime[iAxis] += g_dt;
-			if (g_dTime[iAxis] <= g_dT1[iAxis])
-			{
-				g_dVel[iAxis] = g_Motion_Params[iAxis].m_dMotionAcc * g_dTime[iAxis];
-				g_dS[iAxis] = 0.5 * g_Motion_Params[iAxis].m_dMotionAcc * pow(g_dTime[iAxis], 2);
-				g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_dDirection[iAxis];
-			}
-			else if (g_dTime[iAxis] > g_dT1[iAxis] && g_dTime[iAxis] <= g_dT1[iAxis] + g_dT2[iAxis])
-			{
-				g_dVel[iAxis] = g_Motion_Params[iAxis].m_dMotionSpeed;
-				g_dS[iAxis] = g_dS1[iAxis] + g_Motion_Params[iAxis].m_dMotionSpeed * (g_dTime[iAxis] - g_dT1[iAxis]);
-				g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_dDirection[iAxis];
-			}
-			else if (g_dTime[iAxis] > g_dT1[iAxis] + g_dT2[iAxis] && g_dTime[iAxis] <= g_dTtotal[iAxis])
-			{
-				g_dVel[iAxis] = g_dVm[iAxis] - g_Motion_Params[iAxis].m_dMotionAcc * (g_dTime[iAxis] - g_dT1[iAxis] - g_dT2[iAxis]);
-				g_dS[iAxis] = g_dS1[iAxis] + g_dS2[iAxis] + g_dVm[iAxis] * (g_dTime[iAxis] - g_dT1[iAxis] - g_dT2[iAxis]) - 0.5 * g_Motion_Params[iAxis].m_dMotionAcc * pow((g_dTime[iAxis] - g_dT1[iAxis] - g_dT2[iAxis]), 2);
-				g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_dDirection[iAxis];
-			}
-			else
-			{
-				g_dVel[iAxis] = 0.0;
-				g_Position_Params[iAxis].m_dCmdPos = g_Position_Params[iAxis].m_dTarPos;
-				g_bCmdDoneFlag[iAxis] = true;
-				if (g_bCmdDoneFlag[0] && g_bCmdDoneFlag[1])
-				{
-					g_iCmdBufCnt++;
-					g_bCmdDoneFlag[0] = false;
-					g_bCmdDoneFlag[1] = false;
-				}
-			}
-			break;
-		}
-		case SPEED:
-		{
-			g_u32LEDout &= 0xfffffffd;
-
-			g_bCmdDoneFlag[iAxis] = true;
-			if (g_bCmdDoneFlag[0] && g_bCmdDoneFlag[1])
-			{
-				g_iCmdBufCnt++;
-				g_bCmdDoneFlag[0] = false;
-				g_bCmdDoneFlag[1] = false;
-			}
-			break;
-		}
-		case ACC:
-		{
-			g_bCmdDoneFlag[iAxis] = true;
-			if (g_bCmdDoneFlag[0] && g_bCmdDoneFlag[1])
-			{
-				g_iCmdBufCnt++;
-				g_bCmdDoneFlag[0] = false;
-				g_bCmdDoneFlag[1] = false;
-			}
-			break;
-		}
-		case END:
-		{
-			return 0;
-		}
-		default:
-			break;
-	}
-
-	return 1;
-}
-
 void ECM_intr_Handler(void *CallBackRef)
 {
 	int i;
@@ -135,7 +59,7 @@ void ECM_intr_Handler(void *CallBackRef)
 	
 	if(g_bInterruptFlag)
 	{
-		g_u16JF8out ^= 0xffff;
+		g_u16JF8out = 1;
 
 		nret = ECM_EcatPdoFifoDataGet(g_TxData, g_u16PDOSizeRet);
 		if (nret > 0)
@@ -147,214 +71,239 @@ void ECM_intr_Handler(void *CallBackRef)
 			}
 		}
 		
-		for (i = 0; i < g_iServoCnt; i++)
+		if (g_bRunFileFlag)
 		{
-			switch (g_Position_Params[i].m_uMode)
+			g_bBeginPosFlag[0] = false;
+			g_bBeginPosFlag[1] = false;
+
+			if (g_bStopFlag[0] || g_bStopFlag[1])
 			{
-				case MODE_IDLE:
+				// Stop
+				g_iCmdBufCnt = 0;
+				g_bRunFileFlag = false;
+				g_Position_Params[0].m_uMode = MODE_IDLE;
+				g_Position_Params[1].m_uMode = MODE_IDLE;
+			}
+			else
+			{
+				switch (g_CmdBuf[g_iCmdBufCnt].m_iID)
 				{
-					g_dVel[i] = 0.0;
-					g_dTime[i] = 0.0;
-					g_dS[i] = 0.0;
-					g_bStopFlag[i] = false;
-					g_bHomingFlag[i] = false;
-					g_iCnt[i] = 5;
-					g_iCmdBufCnt = 0;
-					g_bCmdDoneFlag[i] = false;
-					g_iFileCmdCnt = 0;
-
-					g_pRxPDOData[i].u16CtlWord = 0x000f;
-					break;
-				}
-				case MODE_JOG:
-				{
-					if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT && g_Motion_Params[i].m_dJogSpeed < 0.0)
+					case BEGIN:
 					{
-						g_Position_Params[i].m_uMode = MODE_IDLE;
+						g_iCmdBufCnt++;
 						break;
 					}
-					else if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT && g_Motion_Params[i].m_dJogSpeed > 0.0)
+					case SPEED:
 					{
-						g_Position_Params[i].m_uMode = MODE_IDLE;
+						g_cmd_file_params.m_dSpeed = g_CmdBuf[g_iCmdBufCnt].m_dParams[0];
+						g_cmd_file_params.m_dFSpeed = g_CmdBuf[g_iCmdBufCnt].m_dParams[1];
+						g_iCmdBufCnt++;
+						break;
+					}	
+					case ACC:
+					{
+						g_cmd_file_params.m_dAcc = g_CmdBuf[g_iCmdBufCnt].m_dParams[0];
+						g_cmd_file_params.m_dFAcc = g_CmdBuf[g_iCmdBufCnt].m_dParams[1];
+						g_iCmdBufCnt++;
 						break;
 					}
-
-					g_pRxPDOData[i].u16CtlWord = 0x000f;
-
-					if (!g_bStopFlag[i])
+					case LINEXY:
 					{
-						nret = GetCmdPos_Acc_Jog(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
-						if (nret <= 0)
-						{
-							GetCmdPos_ConstVel_Jog(g_Motion_Params[i].m_dJogSpeed, i);
-						}
-					}
-					else
-					{
-						GetCmdPos_Dec_Jog(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
-						g_Position_Params[i].m_uMode = MODE_JOGEND;
-					}
-					break;
-				}
-				case MODE_MOTION:
-				{
-					if ((g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT) || (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT))
-					{
-						g_Position_Params[i].m_uMode = MODE_IDLE;
 						break;
 					}
-
-					g_pRxPDOData[i].u16CtlWord = 0x000f;
-
-					if (!g_bStopFlag[i])
+					case END:
 					{
-						g_dTime[i] += g_dt;
-						if (g_dTime[i] <= g_dT1[i])
-						{
-							g_dVel[i] = g_Motion_Params[i].m_dMotionAcc * g_dTime[i];
-							g_dS[i] = 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dTime[i], 2);
-							g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
-						}
-						else if (g_dTime[i] > g_dT1[i] && g_dTime[i] <= g_dT1[i] + g_dT2[i])
-						{
-							g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed;
-							g_dS[i] = g_dS1[i] + g_Motion_Params[i].m_dMotionSpeed * (g_dTime[i] - g_dT1[i]);
-							g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
-						}
-						else if (g_dTime[i] > g_dT1[i] + g_dT2[i] && g_dTime[i] <= g_dTtotal[i])
-						{
-							g_dVel[i] = g_dVm[i] - g_Motion_Params[i].m_dMotionAcc * (g_dTime[i] - g_dT1[i] - g_dT2[i]);
-							g_dS[i] = g_dS1[i] + g_dS2[i] + g_dVm[i] * (g_dTime[i] - g_dT1[i] - g_dT2[i]) - 0.5 * g_Motion_Params[i].m_dMotionAcc * pow((g_dTime[i] - g_dT1[i] - g_dT2[i]), 2);
-							g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
-						}
-						else
-						{
-							g_dVel[i] = 0.0;
-							g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
-							g_Position_Params[i].m_uMode = MODE_IDLE;
-						}
+						g_bRunFileFlag = false;
+						g_Position_Params[0].m_uMode = MODE_IDLE;
+						g_Position_Params[1].m_uMode = MODE_IDLE;
 					}
-					else // Stop
-					{	
-						double dStopSpeed, dStopAcc;
-						
-						dStopSpeed = g_Motion_Params[i].m_dMotionSpeed;
-						dStopAcc = g_Motion_Params[i].m_dMotionAcc;
-						if (g_dDirection[i] < 0)
-						{
-							dStopSpeed = -fabs(dStopSpeed);
-							dStopAcc = -fabs(dStopAcc);
-							g_dVel[i] = -fabs(g_dVel[i]);
-						}
-						
-						nret = GetCmdPos_Dec_Jog(dStopSpeed, dStopAcc, i);
-						if (nret <= 0)
-						{
-							g_Position_Params[i].m_uMode = MODE_IDLE;
-						}
-					}
-					break;
-				}
-				case MODE_HOME:
-				{
-					if (!g_bStopFlag[i])
-					{
-						// RxPDO u16CtlWord Bit4 -> 1
-						g_pRxPDOData[i].u16CtlWord = 0x001f;
-						if (g_bHomingFlag[i])
-						{
-							// TxPDO u16StaWord Bit12 -> 1
-							if (g_pTxPDOData[i].u16StaWord & 0x1000)
-							{
-								// RxPDO u16CtlWord Bit4 -> 0
-								g_pRxPDOData[i].u16CtlWord = 0x000f;
-								g_Position_Params[i].m_uMode = MODE_IDLE;
-								g_bHomingFlag[i] = false;
-								g_iCnt[i] = 5;
-								g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
-								break;
-							}
-						}
-						else
-						{
-							if (g_iCnt[i]-- < 0)
-							{
-								g_bHomingFlag[i] = true;
-							}
-						}
-					}
-					else
-					{
-						// RxPDO u16CtlWord Bit4 -> 0, Bit8 -> 1
-						g_pRxPDOData[i].u16CtlWord = 0x010f;
-						g_Position_Params[i].m_uMode = MODE_IDLE;
-						g_bHomingFlag[i] = false;
-						g_iCnt[i] = 5;
-					}
-					g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
-					break;
-				}
-				case MODE_JOGEND:
-				{
-					g_pRxPDOData[i].u16CtlWord = 0x000f;
-
-					nret = GetCmdPos_Dec_Jog(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
-					if (nret <= 0)
-					{
-						g_Position_Params[i].m_uMode = MODE_IDLE;
-					}
-					break;
-				}
-				case MODE_RUNFILE:
-				{
-					if ((g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT) || (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT))
-					{
-						g_Position_Params[i].m_uMode = MODE_IDLE;
+					default:
 						break;
-					}
-
-					g_pRxPDOData[i].u16CtlWord = 0x000f;
-
-					if (!g_bStopFlag[i])
-					{
-						nret = GetCmdPos_RunFile(i);
-						if (nret <= 0)
-						{
-							g_Position_Params[i].m_uMode = MODE_IDLE;
-						}
-					}
-					else // Stop
-					{
-						double dStopSpeed, dStopAcc;
-						
-						dStopSpeed = g_Motion_Params[i].m_dMotionSpeed;
-						dStopAcc = g_Motion_Params[i].m_dMotionAcc;
-						if (g_dDirection[i] < 0)
-						{
-							dStopSpeed = -fabs(dStopSpeed);
-							dStopAcc = -fabs(dStopAcc);
-							g_dVel[i] = -fabs(g_dVel[i]);
-						}
-						
-						nret = GetCmdPos_Dec_Jog(dStopSpeed, dStopAcc, i);
-						if (nret <= 0)
-						{
-							g_Position_Params[i].m_uMode = MODE_IDLE;
-						}
-					}
-					break;
 				}
-				default:
-					break;
 			}
 
-			g_pRxPDOData[i].n32TarPos = (int)g_Position_Params[i].m_dCmdPos;
+			g_pRxPDOData[0].n32TarPos = (int)g_Position_Params[0].m_dCmdPos;
+			g_pRxPDOData[1].n32TarPos = (int)g_Position_Params[1].m_dCmdPos;
+		}
+		else
+		{
+			for (i = 0; i < g_iServoCnt; i++)
+			{
+				switch (g_Position_Params[i].m_uMode)
+				{
+					case MODE_IDLE:
+					{
+						g_dVel[i] = 0.0;
+						g_dTime[i] = 0.0;
+						g_dS[i] = 0.0;
+						g_bStopFlag[i] = false;
+						g_bHomingFlag[i] = false;
+						g_iCnt[i] = 5;
+						g_iCmdBufCnt = 0;
+						g_bRunFileFlag = false;
+						g_iFileCmdCnt = 0;
+
+						g_pRxPDOData[i].u16CtlWord = 0x000f;
+						break;
+					}
+					case MODE_JOG:
+					{
+						if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT && g_Motion_Params[i].m_dJogSpeed < 0.0)
+						{
+							g_Position_Params[i].m_uMode = MODE_IDLE;
+							break;
+						}
+						else if (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT && g_Motion_Params[i].m_dJogSpeed > 0.0)
+						{
+							g_Position_Params[i].m_uMode = MODE_IDLE;
+							break;
+						}
+
+						g_pRxPDOData[i].u16CtlWord = 0x000f;
+
+						if (!g_bStopFlag[i])
+						{
+							nret = GetCmdPos_Acc_Jog(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
+							if (nret <= 0)
+							{
+								GetCmdPos_ConstVel_Jog(g_Motion_Params[i].m_dJogSpeed, i);
+							}
+						}
+						else
+						{
+							GetCmdPos_Dec_Jog(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
+							g_Position_Params[i].m_uMode = MODE_JOGEND;
+						}
+						break;
+					}
+					case MODE_MOTION:
+					{
+						if ((g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_LEFT) || (g_Position_Params[i].m_uInput & DIGINPUT_LIMIT_RIGHT))
+						{
+							g_Position_Params[i].m_uMode = MODE_IDLE;
+							break;
+						}
+
+						g_pRxPDOData[i].u16CtlWord = 0x000f;
+
+						if (!g_bStopFlag[i])
+						{
+							g_dTime[i] += g_dt;
+							if (g_dTime[i] <= g_dT1[i])
+							{
+								g_dVel[i] = g_Motion_Params[i].m_dMotionAcc * g_dTime[i];
+								g_dS[i] = 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dTime[i], 2);
+								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
+							}
+							else if (g_dTime[i] > g_dT1[i] && g_dTime[i] <= g_dT1[i] + g_dT2[i])
+							{
+								g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed;
+								g_dS[i] = g_dS1[i] + g_Motion_Params[i].m_dMotionSpeed * (g_dTime[i] - g_dT1[i]);
+								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
+							}
+							else if (g_dTime[i] > g_dT1[i] + g_dT2[i] && g_dTime[i] <= g_dTtotal[i])
+							{
+								g_dVel[i] = g_dVm[i] - g_Motion_Params[i].m_dMotionAcc * (g_dTime[i] - g_dT1[i] - g_dT2[i]);
+								g_dS[i] = g_dS1[i] + g_dS2[i] + g_dVm[i] * (g_dTime[i] - g_dT1[i] - g_dT2[i]) - 0.5 * g_Motion_Params[i].m_dMotionAcc * pow((g_dTime[i] - g_dT1[i] - g_dT2[i]), 2);
+								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
+							}
+							else
+							{
+								g_dVel[i] = 0.0;
+								g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
+								g_Position_Params[i].m_uMode = MODE_IDLE;
+								g_bBeginPosFlag[i] = true;
+								g_iCmdBufCnt = 0;
+							}
+						}
+						else // Stop
+						{	
+							double dStopSpeed, dStopAcc;
+							
+							dStopSpeed = g_Motion_Params[i].m_dMotionSpeed;
+							dStopAcc = g_Motion_Params[i].m_dMotionAcc;
+							if (g_dDirection[i] < 0)
+							{
+								dStopSpeed = -fabs(dStopSpeed);
+								dStopAcc = -fabs(dStopAcc);
+								g_dVel[i] = -fabs(g_dVel[i]);
+							}
+							
+							nret = GetCmdPos_Dec_Jog(dStopSpeed, dStopAcc, i);
+							if (nret <= 0)
+							{
+								g_Position_Params[i].m_uMode = MODE_IDLE;
+							}
+						}
+						break;
+					}
+					case MODE_HOME:
+					{
+						if (!g_bStopFlag[i])
+						{
+							// RxPDO u16CtlWord Bit4 -> 1
+							g_pRxPDOData[i].u16CtlWord = 0x001f;
+							if (g_bHomingFlag[i])
+							{
+								// TxPDO u16StaWord Bit12 -> 1
+								if (g_pTxPDOData[i].u16StaWord & 0x1000)
+								{
+									// RxPDO u16CtlWord Bit4 -> 0
+									g_pRxPDOData[i].u16CtlWord = 0x000f;
+									g_Position_Params[i].m_uMode = MODE_IDLE;
+									g_bHomingFlag[i] = false;
+									g_iCnt[i] = 5;
+									g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
+									break;
+								}
+							}
+							else
+							{
+								if (g_iCnt[i]-- < 0)
+								{
+									g_bHomingFlag[i] = true;
+								}
+							}
+						}
+						else
+						{
+							// RxPDO u16CtlWord Bit4 -> 0, Bit8 -> 1
+							g_pRxPDOData[i].u16CtlWord = 0x010f;
+							g_Position_Params[i].m_uMode = MODE_IDLE;
+							g_bHomingFlag[i] = false;
+							g_iCnt[i] = 5;
+						}
+						g_Position_Params[i].m_dCmdPos = (double)g_Position_Params[i].m_iCurPos;
+						break;
+					}
+					case MODE_JOGEND:
+					{
+						g_pRxPDOData[i].u16CtlWord = 0x000f;
+
+						nret = GetCmdPos_Dec_Jog(g_Motion_Params[i].m_dJogSpeed, g_Motion_Params[i].m_dJogAcc, i);
+						if (nret <= 0)
+						{
+							g_Position_Params[i].m_uMode = MODE_IDLE;
+						}
+						break;
+					}
+					case MODE_RUNFILE:
+					{
+						break;
+					}
+					default:
+						break;
+				}
+
+				g_pRxPDOData[i].n32TarPos = (int)g_Position_Params[i].m_dCmdPos;
+			}
 		}
 
 		ECM_EcatPdoFifoDataSend(g_RxData, g_u16PDOSize);
 	}
 	
 	Xil_Out32(ECM_INTR_RESET, 1);
+	g_u16JF8out = 0;
 }
 
 void SetupInterruptSystem()

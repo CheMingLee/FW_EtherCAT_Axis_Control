@@ -35,8 +35,10 @@ TXPDO_ST_DEF_T *g_pTxPDOData;
 
 FILE_CMD g_CmdBuf[10];
 int g_iCmdBufCnt;
-bool g_bCmdDoneFlag[2];
+bool g_bRunFileFlag;
 int g_iFileCmdCnt;
+CMD_FILE_PARAMS g_cmd_file_params;
+bool g_bBeginPosFlag[2];
 
 u32 g_u32LEDout;
 u16 g_u16JF8out;
@@ -115,13 +117,10 @@ void InitParameters()
 	}
 	
 	g_iCmdBufCnt = 0;
-
-	for (i = 0; i < 2; i++)
-	{
-		g_bCmdDoneFlag[i] = false;
-	}
-	
+	g_bRunFileFlag = false;
 	g_iFileCmdCnt = 0;
+	g_bBeginPosFlag[0] = false;
+	g_bBeginPosFlag[1] = false;
 
 	g_u32LEDout = 0;
 	g_u16JF8out = 0;
