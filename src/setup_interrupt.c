@@ -45,9 +45,103 @@ int GetCmdPos_Dec_Jog(double dSpeed, double dAcc, int iAxis)
 	return 1;
 }
 
+int CalDistance()
+{
+	g_dXY_Dis = sqrt(pow(g_cmd_file_params.m_dEndPos[0] - g_cmd_file_params.m_dBegPos[0], 2) + pow(g_cmd_file_params.m_dEndPos[1] - g_cmd_file_params.m_dBegPos[1], 2));
+	if (g_dXY_Dis <= 0.0)
+	{
+		return 0;
+	}
+	return 1;
+}
+
+int CalRatio()
+{
+	if (g_dXY_Dis != 0.0)
+	{
+		g_cmd_file_params.m_dRatio[0] = (g_cmd_file_params.m_dEndPos[0] - g_cmd_file_params.m_dBegPos[0]) / g_dXY_Dis;
+		g_cmd_file_params.m_dRatio[1] = (g_cmd_file_params.m_dEndPos[1] - g_cmd_file_params.m_dBegPos[1]) / g_dXY_Dis;
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+void GetPathParams(double dSpeed, double dAcc)
+{
+	g_dXY_Vs = 0.0;
+	g_dXY_Ve = 0.0;
+	g_dXY_S1 = (pow(dSpeed, 2) - pow(g_dXY_Vs, 2)) / (2.0 * dAcc);
+	g_dXY_S3 = (pow(dSpeed, 2) - pow(g_dXY_Ve, 2)) / (2.0 * dAcc);
+	g_dXY_S2 = g_dXY_Dis - g_dXY_S1 - g_dXY_S3;
+	if (g_dXY_S2 <= 0.0)
+	{
+		// g_dXY_S1 = (2.0 * dAcc * g_dXY_Dis - pow(g_dXY_Vs, 2)) / (4.0 * dAcc);
+		g_dXY_Vm = sqrt((2.0 * dAcc * g_dXY_Dis + pow(g_dXY_Vs, 2)) / 2.0);
+		g_dXY_S1 = (pow(g_dXY_Vm, 2) - pow(g_dXY_Vs, 2)) / (2.0 * dAcc);
+		g_dXY_S2 = 0.0;
+		g_dXY_S3 = g_dXY_Dis - g_dXY_S1 - g_dXY_S2;
+		g_dXY_T1 = 2.0 * g_dXY_S1 / (g_dXY_Vs + g_dXY_Vm);
+		g_dXY_T2 = 0.0;
+		g_dXY_T3 = 2.0 * g_dXY_S3 / (g_dXY_Ve + g_dXY_Vm);
+		g_dXY_Ttotal = g_dXY_T1 + g_dXY_T2 + g_dXY_T3;
+	}
+	else
+	{
+		g_dXY_Vm = dSpeed;
+		g_dXY_T1 = 2.0 * g_dXY_S1 / (g_dXY_Vs + g_dXY_Vm);
+		g_dXY_T2 = g_dXY_S2 / g_dXY_Vm;
+		g_dXY_T3 = 2.0 * g_dXY_S3 / (g_dXY_Ve + g_dXY_Vm);
+		g_dXY_Ttotal = g_dXY_T1 + g_dXY_T2 + g_dXY_T3;
+	}
+}
+
+int GetPathCmdPos(double dSpeed, double dAcc)
+{
+	g_dXY_Time += g_dt;
+	if (g_dXY_Time <= g_dXY_T1)
+	{
+		g_dXY_V = dAcc * g_dXY_Time;
+		g_dXY_S = 0.5 * dAcc * pow(g_dXY_Time, 2);
+	}
+	else if (g_dXY_Time > g_dXY_T1 && g_dXY_Time <= g_dXY_T1 + g_dXY_T2)
+	{
+		g_dXY_V = dSpeed;
+		g_dXY_S = g_dXY_S1 + dSpeed * (g_dXY_Time - g_dXY_T1);
+	}
+	else if (g_dXY_Time > g_dXY_T1 + g_dXY_T2 && g_dXY_Time <= g_dXY_Ttotal)
+	{
+		g_dXY_V = g_dXY_Vm - dAcc * (g_dXY_Time - g_dXY_T1 - g_dXY_T2);
+		g_dXY_S = g_dXY_S1 + g_dXY_S2 + g_dXY_Vm * (g_dXY_Time - g_dXY_T1 - g_dXY_T2) - 0.5 * dAcc * pow((g_dXY_Time - g_dXY_T1 - g_dXY_T2), 2);
+	}
+	else
+	{
+		g_dXY_V = 0.0;
+		g_Position_Params[0].m_dCmdPos = g_cmd_file_params.m_dEndPos[0];
+		g_Position_Params[1].m_dCmdPos = g_cmd_file_params.m_dEndPos[1];
+		return 0;
+	}
+
+	g_Position_Params[0].m_dCmdPos = g_cmd_file_params.m_dBegPos[0] + g_dXY_S * g_cmd_file_params.m_dRatio[0];
+	g_Position_Params[1].m_dCmdPos = g_cmd_file_params.m_dBegPos[1] + g_dXY_S * g_cmd_file_params.m_dRatio[1];
+
+	return 1;
+}
+
+void SetNextCmd()
+{
+	g_cmd_file_params.m_dBegPos[0] = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[0];
+	g_cmd_file_params.m_dBegPos[1] = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[1];
+	g_dXY_Time = 0.0;
+	g_dXY_V = 0.0;
+	g_iFileCmdIndex++;
+}
+
 void ECM_intr_Handler(void *CallBackRef)
 {
-	int i;
+	int i; // Axis
 	int nret = 0;
 
 	u32 uBusyFlag;
@@ -60,6 +154,7 @@ void ECM_intr_Handler(void *CallBackRef)
 	if(g_bInterruptFlag)
 	{
 		g_u16JF8out = 1;
+		Xil_Out16(IO_ADDR_OUTPUT, g_u16JF8out);
 
 		nret = ECM_EcatPdoFifoDataGet(g_TxData, g_u16PDOSizeRet);
 		if (nret > 0)
@@ -79,40 +174,89 @@ void ECM_intr_Handler(void *CallBackRef)
 			if (g_bStopFlag[0] || g_bStopFlag[1])
 			{
 				// Stop
-				g_iCmdBufCnt = 0;
 				g_bRunFileFlag = false;
+				g_iFileCmdIndex = 0;
 				g_Position_Params[0].m_uMode = MODE_IDLE;
 				g_Position_Params[1].m_uMode = MODE_IDLE;
 			}
 			else
 			{
-				switch (g_CmdBuf[g_iCmdBufCnt].m_iID)
+				FILE_CMD CurCmd;
+				CurCmd = g_CmdBuf[g_iFileCmdIndex % 100];
+
+				switch (CurCmd.m_iID)
 				{
 					case BEGIN:
 					{
-						g_iCmdBufCnt++;
+						SetNextCmd();
+						g_Position_Params[0].m_dCmdPos = g_cmd_file_params.m_dBegPos[0];
+						g_Position_Params[1].m_dCmdPos = g_cmd_file_params.m_dBegPos[1];
 						break;
 					}
 					case SPEED:
 					{
-						g_cmd_file_params.m_dSpeed = g_CmdBuf[g_iCmdBufCnt].m_dParams[0];
-						g_cmd_file_params.m_dFSpeed = g_CmdBuf[g_iCmdBufCnt].m_dParams[1];
-						g_iCmdBufCnt++;
+						g_cmd_file_params.m_dSpeed = CurCmd.m_dParams[0];
+						g_cmd_file_params.m_dFSpeed = CurCmd.m_dParams[1];
+						g_iFileCmdIndex++;
 						break;
 					}	
 					case ACC:
 					{
-						g_cmd_file_params.m_dAcc = g_CmdBuf[g_iCmdBufCnt].m_dParams[0];
-						g_cmd_file_params.m_dFAcc = g_CmdBuf[g_iCmdBufCnt].m_dParams[1];
-						g_iCmdBufCnt++;
+						g_cmd_file_params.m_dAcc = CurCmd.m_dParams[0];
+						g_cmd_file_params.m_dFAcc = CurCmd.m_dParams[1];
+						g_iFileCmdIndex++;
 						break;
 					}
 					case LINEXY:
 					{
+						g_cmd_file_params.m_dEndPos[0] = CurCmd.m_dParams[0];
+						g_cmd_file_params.m_dEndPos[1] = CurCmd.m_dParams[1];
+						nret = CalDistance();
+						if (nret <= 0)
+						{
+							SetNextCmd();
+							break;
+						}
+						else
+						{
+							CalRatio();
+							GetPathParams(g_cmd_file_params.m_dSpeed, g_cmd_file_params.m_dAcc);
+						}
+						nret = GetPathCmdPos(g_cmd_file_params.m_dSpeed, g_cmd_file_params.m_dAcc);
+						if (nret <= 0)
+						{
+							SetNextCmd();
+						}
+						break;
+					}
+					case FLINEXY:
+					{
+						g_u32LEDout |= 0x02;
+
+						g_cmd_file_params.m_dEndPos[0] = CurCmd.m_dParams[0];
+						g_cmd_file_params.m_dEndPos[1] = CurCmd.m_dParams[1];
+						nret = CalDistance();
+						if (nret <= 0)
+						{
+							SetNextCmd();
+							break;
+						}
+						else
+						{
+							CalRatio();
+							GetPathParams(g_cmd_file_params.m_dFSpeed, g_cmd_file_params.m_dFAcc);
+						}
+						nret = GetPathCmdPos(g_cmd_file_params.m_dFSpeed, g_cmd_file_params.m_dFAcc);
+						if (nret <= 0)
+						{
+							SetNextCmd();
+						}
 						break;
 					}
 					case END:
 					{
+						g_u32LEDout &= 0xfffffffd;
+
 						g_bRunFileFlag = false;
 						g_Position_Params[0].m_uMode = MODE_IDLE;
 						g_Position_Params[1].m_uMode = MODE_IDLE;
@@ -139,9 +283,8 @@ void ECM_intr_Handler(void *CallBackRef)
 						g_bStopFlag[i] = false;
 						g_bHomingFlag[i] = false;
 						g_iCnt[i] = 5;
-						g_iCmdBufCnt = 0;
 						g_bRunFileFlag = false;
-						g_iFileCmdCnt = 0;
+						g_iFileCmdIndex = 0;
 
 						g_pRxPDOData[i].u16CtlWord = 0x000f;
 						break;
@@ -213,7 +356,6 @@ void ECM_intr_Handler(void *CallBackRef)
 								g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
 								g_Position_Params[i].m_uMode = MODE_IDLE;
 								g_bBeginPosFlag[i] = true;
-								g_iCmdBufCnt = 0;
 							}
 						}
 						else // Stop
@@ -300,10 +442,12 @@ void ECM_intr_Handler(void *CallBackRef)
 		}
 
 		ECM_EcatPdoFifoDataSend(g_RxData, g_u16PDOSize);
+
+		g_u16JF8out = 0;
+		Xil_Out16(IO_ADDR_OUTPUT, g_u16JF8out);
 	}
 	
 	Xil_Out32(ECM_INTR_RESET, 1);
-	g_u16JF8out = 0;
 }
 
 void SetupInterruptSystem()

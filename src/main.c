@@ -33,12 +33,13 @@ XScuGic g_Intc;
 RXPDO_ST_DEF_T *g_pRxPDOData;
 TXPDO_ST_DEF_T *g_pTxPDOData;
 
-FILE_CMD g_CmdBuf[10];
-int g_iCmdBufCnt;
+FILE_CMD g_CmdBuf[100];
 bool g_bRunFileFlag;
-int g_iFileCmdCnt;
 CMD_FILE_PARAMS g_cmd_file_params;
 bool g_bBeginPosFlag[2];
+int g_iFileCmdIndex;
+
+double g_dXY_V, g_dXY_Dis, g_dXY_S, g_dXY_Vm, g_dXY_S1, g_dXY_S2, g_dXY_S3, g_dXY_T1, g_dXY_T2, g_dXY_T3, g_dXY_Ttotal, g_dXY_Vs, g_dXY_Ve, g_dXY_Time;
 
 u32 g_u32LEDout;
 u16 g_u16JF8out;
@@ -107,7 +108,7 @@ void InitParameters()
 	g_pRxPDOData = (RXPDO_ST_DEF_T *)g_RxData;
 	g_pTxPDOData = (TXPDO_ST_DEF_T *)g_TxData;
 
-	for (i = 0; i < 10; i++)
+	for (i = 0; i < 100; i++)
 	{
 		g_CmdBuf[i].m_iID = 0;
 		for (j = 0; j < 5; j++)
@@ -116,11 +117,21 @@ void InitParameters()
 		}
 	}
 	
-	g_iCmdBufCnt = 0;
+	g_cmd_file_params.m_dBegPos[0] = 0.0;
+	g_cmd_file_params.m_dBegPos[1] = 0.0;
+	g_cmd_file_params.m_dEndPos[0] = 0.0;
+	g_cmd_file_params.m_dEndPos[1] = 0.0;
+	g_cmd_file_params.m_dRatio[0] = 0.0;
+	g_cmd_file_params.m_dRatio[1] = 0.0;
+	g_cmd_file_params.m_dSpeed = 0.0;
+	g_cmd_file_params.m_dFSpeed = 0.0;
+	g_cmd_file_params.m_dAcc = 0.0;
+	g_cmd_file_params.m_dFAcc = 0.0;
+
 	g_bRunFileFlag = false;
-	g_iFileCmdCnt = 0;
 	g_bBeginPosFlag[0] = false;
 	g_bBeginPosFlag[1] = false;
+	g_iFileCmdIndex = 0;
 
 	g_u32LEDout = 0;
 	g_u16JF8out = 0;
@@ -136,7 +147,6 @@ int main()
 	{
 		g_u32LEDout ^= 0x01;
 		Xil_Out32(IO_ADDR_LEDOUT, g_u32LEDout);
-		Xil_Out16(IO_ADDR_OUTPUT, g_u16JF8out);
 		GetAppCmd();
 	}
 

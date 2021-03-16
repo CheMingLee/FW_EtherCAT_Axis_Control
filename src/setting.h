@@ -45,7 +45,7 @@
 #define CMD_GET_CMDPOS 18
 #define CMD_SET_RUNFILE 19
 #define CMD_GET_RUNFILE_BEGINPOS_FLAG 20
-#define CMD_SET_RUNFILE_CMDCNT 21
+#define CMD_GET_RUNFILE_CMDIDX 21
 #define CMD_SET_RUNFILE_CMD 22
 
 // mode define
@@ -79,6 +79,9 @@ typedef struct file_cmd{
 
 // Run File params structure
 typedef struct cmd_file_params{
+	double m_dBegPos[2];
+	double m_dEndPos[2];
+	double m_dRatio[2];
 	double m_dSpeed;
 	double m_dFSpeed;
 	double m_dAcc;
@@ -138,12 +141,13 @@ extern XScuGic g_Intc;
 extern RXPDO_ST_DEF_T *g_pRxPDOData;
 extern TXPDO_ST_DEF_T *g_pTxPDOData;
 
-extern FILE_CMD g_CmdBuf[10];
-extern int g_iCmdBufCnt;
+extern FILE_CMD g_CmdBuf[100];
 extern bool g_bRunFileFlag;
-extern int g_iFileCmdCnt;
 extern CMD_FILE_PARAMS g_cmd_file_params;
 extern bool g_bBeginPosFlag[2];
+extern int g_iFileCmdIndex;
+
+extern double g_dXY_V, g_dXY_Dis, g_dXY_S, g_dXY_Vm, g_dXY_S1, g_dXY_S2, g_dXY_S3, g_dXY_T1, g_dXY_T2, g_dXY_T3, g_dXY_Ttotal, g_dXY_Vs, g_dXY_Ve, g_dXY_Time;
 
 extern u32 g_u32LEDout;
 extern u16 g_u16JF8out;

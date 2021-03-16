@@ -316,9 +316,11 @@ void GetAppCmd()
 				SetFlagOutOne();
 				break;
 			}
-			case CMD_SET_RUNFILE_CMDCNT:
+			case CMD_GET_RUNFILE_CMDIDX:
 			{
-				memcpy(&g_iFileCmdCnt, pData, 4);
+				CmdGetToApp(usCmd, 4);
+				memcpy((void *)IO_ADDR_BRAM_OUT_DATA, &g_iFileCmdIndex, 4);
+				SetFlagOutOne();
 				break;
 			}
 			case CMD_SET_RUNFILE_CMD:
