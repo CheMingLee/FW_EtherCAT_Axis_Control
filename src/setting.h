@@ -61,6 +61,9 @@
 #define DIGINPUT_LIMIT_RIGHT 0x02
 #define DIGINPUT_HMOE 0x04
 
+// math define
+#define PI acos(-1)
+
 // Cmd file define
 #define BEGIN 0
 #define SPEED 1
@@ -148,6 +151,7 @@ extern bool g_bBeginPosFlag[2];
 extern int g_iFileCmdIndex;
 
 extern double g_dXY_V, g_dXY_Dis, g_dXY_S, g_dXY_Vm, g_dXY_S1, g_dXY_S2, g_dXY_S3, g_dXY_T1, g_dXY_T2, g_dXY_T3, g_dXY_Ttotal, g_dXY_Vs, g_dXY_Ve, g_dXY_Time;
+extern double g_dThetaMax;
 
 extern u32 g_u32LEDout;
 extern u16 g_u16JF8out;

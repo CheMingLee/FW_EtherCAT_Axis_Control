@@ -45,6 +45,77 @@ int GetCmdPos_Dec_Jog(double dSpeed, double dAcc, int iAxis)
 	return 1;
 }
 
+void CheckVend(double dXY_Dis, double dAcc)
+{
+	double dVs = g_dXY_Ve;
+	double dS = pow(dVs, 2) / (2.0 * dAcc);
+
+	if (dS > dXY_Dis)
+	{
+		g_dXY_Ve = sqrt(2.0 * dAcc * dXY_Dis);
+	}
+}
+
+int CheckTheta(int iIndex)
+{
+	double dCosTheta;
+	double dX2, dX1, dX0;
+	double dY2, dY1, dY0;
+	double dXY_DisNext;
+	
+	if (g_CmdBuf[iIndex % 100 + 1].m_iID == LINEXY || g_CmdBuf[iIndex % 100 + 1].m_iID == FLINEXY)
+	{
+		dX0 = g_cmd_file_params.m_dBegPos[0];
+		dX1 = g_cmd_file_params.m_dEndPos[0];
+		dX2 = g_CmdBuf[iIndex % 100 + 1].m_dParams[0];
+		dY0 = g_cmd_file_params.m_dBegPos[1];
+		dY1 = g_cmd_file_params.m_dEndPos[1];
+		dY2 = g_CmdBuf[iIndex % 100 + 1].m_dParams[1];
+		dXY_DisNext = sqrt(pow(dX2 - dX1, 2) + pow(dY2 - dY1, 2));
+		if (dXY_DisNext != 0)
+		{
+			dCosTheta = ((dX1 - dX0) * (dX2 - dX1) + (dY1 - dY0) * (dY2 - dY1)) / (dXY_DisNext * g_dXY_Dis);
+			if (dCosTheta > cos(g_dThetaMax * PI / 180.0))
+			{
+				if (g_CmdBuf[iIndex % 100].m_iID == LINEXY)
+				{
+					g_dXY_Ve = g_cmd_file_params.m_dSpeed;
+					if (g_CmdBuf[iIndex % 100 + 1].m_iID == FLINEXY)
+					{
+						CheckVend(dXY_DisNext, g_cmd_file_params.m_dFAcc);
+					}
+					else
+					{
+						CheckVend(dXY_DisNext, g_cmd_file_params.m_dAcc);
+					}
+				}
+				else
+				{
+					if (g_CmdBuf[iIndex % 100 + 1].m_iID == LINEXY)
+					{
+						g_dXY_Ve = g_cmd_file_params.m_dSpeed;
+						CheckVend(dXY_DisNext, g_cmd_file_params.m_dAcc);
+					}
+					else
+					{
+						g_dXY_Ve = g_cmd_file_params.m_dFSpeed;
+						CheckVend(dXY_DisNext, g_cmd_file_params.m_dFAcc);
+					}
+				}
+				return 1;
+			}
+		}
+		else
+		{
+			iIndex++;
+			return CheckTheta(iIndex);
+		}
+	}
+
+	g_dXY_Ve = 0.0;
+	return 0;
+}
+
 int CalDistance()
 {
 	g_dXY_Dis = sqrt(pow(g_cmd_file_params.m_dEndPos[0] - g_cmd_file_params.m_dBegPos[0], 2) + pow(g_cmd_file_params.m_dEndPos[1] - g_cmd_file_params.m_dBegPos[1], 2));
@@ -71,22 +142,35 @@ int CalRatio()
 
 void GetPathParams(double dSpeed, double dAcc)
 {
-	g_dXY_Vs = 0.0;
-	g_dXY_Ve = 0.0;
 	g_dXY_S1 = (pow(dSpeed, 2) - pow(g_dXY_Vs, 2)) / (2.0 * dAcc);
 	g_dXY_S3 = (pow(dSpeed, 2) - pow(g_dXY_Ve, 2)) / (2.0 * dAcc);
 	g_dXY_S2 = g_dXY_Dis - g_dXY_S1 - g_dXY_S3;
 	if (g_dXY_S2 <= 0.0)
 	{
-		// g_dXY_S1 = (2.0 * dAcc * g_dXY_Dis - pow(g_dXY_Vs, 2)) / (4.0 * dAcc);
-		g_dXY_Vm = sqrt((2.0 * dAcc * g_dXY_Dis + pow(g_dXY_Vs, 2)) / 2.0);
-		g_dXY_S1 = (pow(g_dXY_Vm, 2) - pow(g_dXY_Vs, 2)) / (2.0 * dAcc);
-		g_dXY_S2 = 0.0;
-		g_dXY_S3 = g_dXY_Dis - g_dXY_S1 - g_dXY_S2;
-		g_dXY_T1 = 2.0 * g_dXY_S1 / (g_dXY_Vs + g_dXY_Vm);
-		g_dXY_T2 = 0.0;
-		g_dXY_T3 = 2.0 * g_dXY_S3 / (g_dXY_Ve + g_dXY_Vm);
-		g_dXY_Ttotal = g_dXY_T1 + g_dXY_T2 + g_dXY_T3;
+		g_dXY_S1 = (2.0 * dAcc * g_dXY_Dis - pow(g_dXY_Vs, 2)) / (4.0 * dAcc);
+		if (g_dXY_S1 < 0.0)
+		{
+			g_dXY_Ve = sqrt(pow(g_dXY_Vs, 2) - 2.0 * dAcc * g_dXY_Dis);
+			g_dXY_Vm = g_dXY_Vs;
+			g_dXY_S1 = 0.0;
+			g_dXY_S2 = 0.0;
+			g_dXY_S3 = g_dXY_Dis;
+			g_dXY_T1 = 0.0;
+			g_dXY_T2 = 0.0;
+			g_dXY_T3 = 2.0 * g_dXY_S3 / (g_dXY_Ve + g_dXY_Vm);
+			g_dXY_Ttotal = g_dXY_T1 + g_dXY_T2 + g_dXY_T3;
+		}
+		else
+		{
+			g_dXY_Vm = sqrt((2.0 * dAcc * g_dXY_Dis + pow(g_dXY_Vs, 2)) / 2.0);
+			g_dXY_S1 = (pow(g_dXY_Vm, 2) - pow(g_dXY_Vs, 2)) / (2.0 * dAcc);
+			g_dXY_S2 = 0.0;
+			g_dXY_S3 = g_dXY_Dis - g_dXY_S1 - g_dXY_S2;
+			g_dXY_T1 = 2.0 * g_dXY_S1 / (g_dXY_Vs + g_dXY_Vm);
+			g_dXY_T2 = 0.0;
+			g_dXY_T3 = 2.0 * g_dXY_S3 / (g_dXY_Ve + g_dXY_Vm);
+			g_dXY_Ttotal = g_dXY_T1 + g_dXY_T2 + g_dXY_T3;
+		}
 	}
 	else
 	{
@@ -136,6 +220,7 @@ void SetNextCmd()
 	g_cmd_file_params.m_dBegPos[1] = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[1];
 	g_dXY_Time = 0.0;
 	g_dXY_V = 0.0;
+	g_dXY_Vs = g_dXY_Ve;
 	g_iFileCmdIndex++;
 }
 
@@ -188,6 +273,8 @@ void ECM_intr_Handler(void *CallBackRef)
 				{
 					case BEGIN:
 					{
+						g_dXY_Vs = 0.0;
+						g_dXY_Ve = 0.0;
 						SetNextCmd();
 						g_Position_Params[0].m_dCmdPos = g_cmd_file_params.m_dBegPos[0];
 						g_Position_Params[1].m_dCmdPos = g_cmd_file_params.m_dBegPos[1];
@@ -220,6 +307,7 @@ void ECM_intr_Handler(void *CallBackRef)
 						else
 						{
 							CalRatio();
+							CheckTheta(g_iFileCmdIndex);
 							GetPathParams(g_cmd_file_params.m_dSpeed, g_cmd_file_params.m_dAcc);
 						}
 						nret = GetPathCmdPos(g_cmd_file_params.m_dSpeed, g_cmd_file_params.m_dAcc);
@@ -244,6 +332,7 @@ void ECM_intr_Handler(void *CallBackRef)
 						else
 						{
 							CalRatio();
+							CheckTheta(g_iFileCmdIndex);
 							GetPathParams(g_cmd_file_params.m_dFSpeed, g_cmd_file_params.m_dFAcc);
 						}
 						nret = GetPathCmdPos(g_cmd_file_params.m_dFSpeed, g_cmd_file_params.m_dFAcc);

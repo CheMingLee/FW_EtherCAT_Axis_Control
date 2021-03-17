@@ -40,6 +40,7 @@ bool g_bBeginPosFlag[2];
 int g_iFileCmdIndex;
 
 double g_dXY_V, g_dXY_Dis, g_dXY_S, g_dXY_Vm, g_dXY_S1, g_dXY_S2, g_dXY_S3, g_dXY_T1, g_dXY_T2, g_dXY_T3, g_dXY_Ttotal, g_dXY_Vs, g_dXY_Ve, g_dXY_Time;
+double g_dThetaMax;
 
 u32 g_u32LEDout;
 u16 g_u16JF8out;
@@ -132,6 +133,7 @@ void InitParameters()
 	g_bBeginPosFlag[0] = false;
 	g_bBeginPosFlag[1] = false;
 	g_iFileCmdIndex = 0;
+	g_dThetaMax = 15.0;
 
 	g_u32LEDout = 0;
 	g_u16JF8out = 0;

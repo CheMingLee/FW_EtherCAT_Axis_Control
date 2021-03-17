@@ -79,9 +79,9 @@ void GetAppCmd()
 
 				do
 				{
-					Xil_Out8(ECM_ADDR_DATA_OUT + iOffset, *((u8 *)(pData + iOffset)));
-					usSize -= 1;
-					iOffset += 1;
+					Xil_Out32(ECM_ADDR_DATA_OUT + iOffset, *((u32 *)(pData + iOffset)));
+					usSize -= 4;
+					iOffset += 4;
 				} while (usSize > 0);
 				break;
 			}
@@ -102,7 +102,7 @@ void GetAppCmd()
 			}
 			case CMD_GET_RXDATA:
 			{
-				u8 u8Data;
+				u32 u32Data;
 				u32 uSizeBuf;
 				int iOffset = 0;
 				
@@ -112,10 +112,10 @@ void GetAppCmd()
 				
 				do
 				{
-					u8Data = Xil_In8(ECM_ADDR_DATA_IN + iOffset);
-					Xil_Out8(IO_ADDR_BRAM_OUT_DATA + iOffset, u8Data);
-					usSize -= 1;
-					iOffset += 1;
+					u32Data = Xil_In32(ECM_ADDR_DATA_IN + iOffset);
+					Xil_Out32(IO_ADDR_BRAM_OUT_DATA + iOffset, u32Data);
+					usSize -= 4;
+					iOffset += 4;
 				} while (usSize > 0);
 				SetFlagOutOne();
 				break;

@@ -30,7 +30,7 @@ void PCC6SpiDataGet(uint8_t *pRxBuf, uint32_t u32TotalPackSize)
 		int iOffset;
 		int iTotalPackSize;
 		u32 uBusyFlag;
-		u8 u8Data;
+		u32 u32Data;
 		
 		do
 		{
@@ -41,10 +41,10 @@ void PCC6SpiDataGet(uint8_t *pRxBuf, uint32_t u32TotalPackSize)
 		iTotalPackSize = (int)u32TotalPackSize;
 		do
 		{
-			u8Data = Xil_In8(ECM_ADDR_DATA_IN + iOffset);
-			memcpy(pRxBuf + iOffset, &u8Data, 1);
-			iTotalPackSize -= 1;
-			iOffset += 1;
+			u32Data = Xil_In32(ECM_ADDR_DATA_IN + iOffset);
+			memcpy(pRxBuf + iOffset, &u32Data, 4);
+			iTotalPackSize -= 4;
+			iOffset += 4;
 		} while (iTotalPackSize > 0);
 	}
 }
@@ -102,9 +102,9 @@ void PCC6SpiDataSend(uint8_t *pTxBuf, uint32_t u32TotalPackSize)
 		iTotalPackSize = (int)u32TotalPackSize;
 		do
 		{
-			Xil_Out8(ECM_ADDR_DATA_OUT + iOffset, *(pTxBuf + iOffset));
-			iTotalPackSize -= 1;
-			iOffset += 1;
+			Xil_Out32(ECM_ADDR_DATA_OUT + iOffset, *((u32 *)(pTxBuf + iOffset)));
+			iTotalPackSize -= 4;
+			iOffset += 4;
 		} while (iTotalPackSize > 0);
 
 		Xil_Out32(ECM_ADDR_SEND, 1);
