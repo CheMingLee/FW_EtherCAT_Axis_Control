@@ -45,6 +45,69 @@ int GetCmdPos_Dec_Jog(double dSpeed, double dAcc, int iAxis)
 	return 1;
 }
 
+void GetCmdPos_Motion(int iAxis)
+{
+	g_dTime[iAxis] += g_dt;
+	if (g_dTime[iAxis] <= g_dT1[iAxis])
+	{
+		g_dVel[iAxis] = g_Motion_Params[iAxis].m_dMotionAcc * g_dTime[iAxis];
+		g_dS[iAxis] = 0.5 * g_Motion_Params[iAxis].m_dMotionAcc * pow(g_dTime[iAxis], 2);
+		g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_dDirection[iAxis];
+	}
+	else if (g_dTime[iAxis] > g_dT1[iAxis] && g_dTime[iAxis] <= g_dT1[iAxis] + g_dT2[iAxis])
+	{
+		g_dVel[iAxis] = g_Motion_Params[iAxis].m_dMotionSpeed;
+		g_dS[iAxis] = g_dS1[iAxis] + g_Motion_Params[iAxis].m_dMotionSpeed * (g_dTime[iAxis] - g_dT1[iAxis]);
+		g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_dDirection[iAxis];
+	}
+	else if (g_dTime[iAxis] > g_dT1[iAxis] + g_dT2[iAxis] && g_dTime[iAxis] <= g_dTtotal[iAxis])
+	{
+		g_dVel[iAxis] = g_dVm[iAxis] - g_Motion_Params[iAxis].m_dMotionAcc * (g_dTime[iAxis] - g_dT1[iAxis] - g_dT2[iAxis]);
+		g_dS[iAxis] = g_dS1[iAxis] + g_dS2[iAxis] + g_dVm[iAxis] * (g_dTime[iAxis] - g_dT1[iAxis] - g_dT2[iAxis]) - 0.5 * g_Motion_Params[iAxis].m_dMotionAcc * pow((g_dTime[iAxis] - g_dT1[iAxis] - g_dT2[iAxis]), 2);
+		g_Position_Params[iAxis].m_dCmdPos = g_dStartPos[iAxis] + g_dS[iAxis] * g_dDirection[iAxis];
+	}
+	else
+	{
+		g_dVel[iAxis] = 0.0;
+		g_Position_Params[iAxis].m_dCmdPos = g_Position_Params[iAxis].m_dTarPos;
+		g_Position_Params[iAxis].m_uMode = MODE_IDLE;
+		g_bBeginPosFlag[iAxis] = true;
+	}
+}
+
+void GetBegParams()
+{
+	g_Position_Params[0].m_dCmdPos = g_cmd_file_params.m_dBegPos[0];
+	g_Position_Params[1].m_dCmdPos = g_cmd_file_params.m_dBegPos[1];
+}
+
+void GetSpeedParams()
+{
+	g_cmd_file_params.m_dSpeed = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[0];
+	g_cmd_file_params.m_dFSpeed = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[1];
+}
+
+void GetAccParams()
+{
+	g_cmd_file_params.m_dAcc = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[0];
+	g_cmd_file_params.m_dFAcc = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[1];
+}
+
+void GetLineParams()
+{
+	g_cmd_file_params.m_dEndPos[0] = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[0];
+	g_cmd_file_params.m_dEndPos[1] = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[1];
+}
+
+void GetArcParams()
+{
+	g_cmd_file_params.m_dEndPos[0] = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[0];
+	g_cmd_file_params.m_dEndPos[1] = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[1];
+	g_cmd_file_params.m_dCenPos[0] = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[2];
+	g_cmd_file_params.m_dCenPos[1] = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[3];
+	g_cmd_file_params.m_dArcDir = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[4];
+}
+
 void CheckVend(double dXY_Dis, double dAcc)
 {
 	double dVs = g_dXY_Ve;
@@ -54,66 +117,6 @@ void CheckVend(double dXY_Dis, double dAcc)
 	{
 		g_dXY_Ve = sqrt(2.0 * dAcc * dXY_Dis);
 	}
-}
-
-int CheckTheta(int iIndex)
-{
-	double dCosTheta;
-	double dX2, dX1, dX0;
-	double dY2, dY1, dY0;
-	double dXY_DisNext;
-	
-	if (g_CmdBuf[iIndex % 100 + 1].m_iID == LINEXY || g_CmdBuf[iIndex % 100 + 1].m_iID == FLINEXY)
-	{
-		dX0 = g_cmd_file_params.m_dBegPos[0];
-		dX1 = g_cmd_file_params.m_dEndPos[0];
-		dX2 = g_CmdBuf[iIndex % 100 + 1].m_dParams[0];
-		dY0 = g_cmd_file_params.m_dBegPos[1];
-		dY1 = g_cmd_file_params.m_dEndPos[1];
-		dY2 = g_CmdBuf[iIndex % 100 + 1].m_dParams[1];
-		dXY_DisNext = sqrt(pow(dX2 - dX1, 2) + pow(dY2 - dY1, 2));
-		if (dXY_DisNext != 0)
-		{
-			dCosTheta = ((dX1 - dX0) * (dX2 - dX1) + (dY1 - dY0) * (dY2 - dY1)) / (dXY_DisNext * g_dXY_Dis);
-			if (dCosTheta > cos(g_dThetaMax * PI / 180.0))
-			{
-				if (g_CmdBuf[iIndex % 100].m_iID == LINEXY)
-				{
-					g_dXY_Ve = g_cmd_file_params.m_dSpeed;
-					if (g_CmdBuf[iIndex % 100 + 1].m_iID == FLINEXY)
-					{
-						CheckVend(dXY_DisNext, g_cmd_file_params.m_dFAcc);
-					}
-					else
-					{
-						CheckVend(dXY_DisNext, g_cmd_file_params.m_dAcc);
-					}
-				}
-				else
-				{
-					if (g_CmdBuf[iIndex % 100 + 1].m_iID == LINEXY)
-					{
-						g_dXY_Ve = g_cmd_file_params.m_dSpeed;
-						CheckVend(dXY_DisNext, g_cmd_file_params.m_dAcc);
-					}
-					else
-					{
-						g_dXY_Ve = g_cmd_file_params.m_dFSpeed;
-						CheckVend(dXY_DisNext, g_cmd_file_params.m_dFAcc);
-					}
-				}
-				return 1;
-			}
-		}
-		else
-		{
-			iIndex++;
-			return CheckTheta(iIndex);
-		}
-	}
-
-	g_dXY_Ve = 0.0;
-	return 0;
 }
 
 int CalDistance()
@@ -214,6 +217,271 @@ int GetPathCmdPos(double dSpeed, double dAcc)
 	return 1;
 }
 
+int CalRadius()
+{
+	double dX1, dX0, dXc, dY1, dY0, dYc;
+	double dR1, dR0;
+
+	dX1 = g_cmd_file_params.m_dEndPos[0];
+	dX0 = g_cmd_file_params.m_dBegPos[0];
+	dXc = g_cmd_file_params.m_dCenPos[0];
+	dY1 = g_cmd_file_params.m_dEndPos[1];
+	dY0 = g_cmd_file_params.m_dBegPos[1];
+	dYc = g_cmd_file_params.m_dCenPos[1];
+	dR1 = sqrt(pow(dX1 - dXc, 2) + pow(dY1 - dYc, 2));
+	dR0 = sqrt(pow(dX0 - dXc, 2) + pow(dY0 - dYc, 2));
+	if (dR1 == dR0)
+	{
+		g_cmd_file_params.m_dRadius = dR0;
+		return 1;
+	}
+	return 0;
+}
+
+double ChangeThetaRange(double CosTheta, double SinTheta, double Theta)
+{
+	if (SinTheta < 0) // 3 and 4
+	{
+		if (CosTheta > 0) // 4
+		{
+			Theta = 2.0 * PI - Theta;
+		}
+		else if (CosTheta < 0) // 3
+		{
+			Theta = Theta + (PI - Theta);
+		}
+		else // y Axis
+		{
+			Theta = 1.5 * PI;
+		}
+	}
+	return Theta;
+}
+
+int CalArcThetaDis()
+{
+	if (g_cmd_file_params.m_dRadius <= 0.0)
+	{
+		return 0;
+	}
+
+	double dX1, dX0, dXc, dY1, dY0, dYc, dR;
+	double dCosThetaS, dSinThetaS, dThetaS, dCosThetaE, dSinThetaE, dThetaE;
+
+	dX1 = g_cmd_file_params.m_dEndPos[0];
+	dX0 = g_cmd_file_params.m_dBegPos[0];
+	dXc = g_cmd_file_params.m_dCenPos[0];
+	dY1 = g_cmd_file_params.m_dEndPos[1];
+	dY0 = g_cmd_file_params.m_dBegPos[1];
+	dYc = g_cmd_file_params.m_dCenPos[1];
+	dR = g_cmd_file_params.m_dRadius;
+	dCosThetaS = (dX0 - dXc) / dR;
+	dSinThetaS = (dY0 - dYc) / dR;
+	dCosThetaE = (dX1 - dXc) / dR;
+	dSinThetaE = (dY1 - dYc) / dR;
+
+	dThetaS = acos((dX0 - dXc) / dR); // range is [0, PI]
+	g_dXY_Theta_s = ChangeThetaRange(dCosThetaS, dSinThetaS, dThetaS); // range is [0, 2*PI]
+	
+	dThetaE = acos((dX1 - dXc) / dR); // range is [0, PI]
+	g_dXY_Theta_e = ChangeThetaRange(dCosThetaE, dSinThetaE, dThetaE); // range is [0, 2*PI]
+
+	if (g_cmd_file_params.m_dArcDir >= 0.0) // Counterclockwise
+	{
+		if (g_dXY_Theta_s == g_dXY_Theta_e) // Counterclockwise Circle
+		{
+			g_dXY_ThetaDis = 2.0 * PI;
+		}
+		else
+		{
+			g_dXY_ThetaDis = g_dXY_Theta_e - g_dXY_Theta_s;
+			if (g_dXY_ThetaDis < 0.0)
+			{
+				g_dXY_ThetaDis = g_dXY_ThetaDis + 2.0 * PI;
+			}
+
+		}
+	}
+	else // Clockwise
+	{
+		if (g_dXY_Theta_s == g_dXY_Theta_e) // Clockwise Circle
+		{
+			g_dXY_ThetaDis = 2.0 * PI;
+		}
+		else
+		{
+			g_dXY_ThetaDis = g_dXY_Theta_s - g_dXY_Theta_e;
+			if (g_dXY_ThetaDis < 0.0)
+			{
+				g_dXY_ThetaDis = g_dXY_ThetaDis + 2.0 * PI;
+			}
+		}
+	}
+
+	return 1;
+}
+
+void GetArcPathParams(double dSpeed, double dAcc)
+{
+	double dW = dSpeed / g_cmd_file_params.m_dRadius;
+	double dAlpha = dAcc / g_cmd_file_params.m_dRadius;
+	
+	g_dXY_Ws = g_dXY_Vs / g_cmd_file_params.m_dRadius;
+	g_dXY_We = g_dXY_Ve / g_cmd_file_params.m_dRadius;
+	
+	g_dXY_S1 = (pow(dW, 2) - pow(g_dXY_Ws, 2)) / (2.0 * dAlpha);
+	g_dXY_S3 = (pow(dW, 2) - pow(g_dXY_We, 2)) / (2.0 * dAlpha);
+	g_dXY_S2 = g_dXY_ThetaDis - g_dXY_S1 - g_dXY_S3;
+	if (g_dXY_S2 <= 0.0)
+	{
+		g_dXY_S1 = (2.0 * dAlpha * g_dXY_ThetaDis - pow(g_dXY_Ws, 2)) / (4.0 * dAlpha);
+		if (g_dXY_S1 < 0.0)
+		{
+			g_dXY_We = sqrt(pow(g_dXY_Ws, 2) - 2.0 * dAlpha * g_dXY_ThetaDis);
+			g_dXY_Ve = g_dXY_We * g_cmd_file_params.m_dRadius;
+			g_dXY_Wm = g_dXY_Ws;
+			g_dXY_Vm = g_dXY_Wm * g_cmd_file_params.m_dRadius;
+			g_dXY_S1 = 0.0;
+			g_dXY_S2 = 0.0;
+			g_dXY_S3 = g_dXY_ThetaDis;
+			g_dXY_T1 = 0.0;
+			g_dXY_T2 = 0.0;
+			g_dXY_T3 = 2.0 * g_dXY_S3 / (g_dXY_We + g_dXY_Wm);
+			g_dXY_Ttotal = g_dXY_T1 + g_dXY_T2 + g_dXY_T3;
+		}
+		else
+		{
+			g_dXY_Wm = sqrt((2.0 * dAlpha * g_dXY_ThetaDis + pow(g_dXY_Ws, 2)) / 2.0);
+			g_dXY_Vm = g_dXY_Wm * g_cmd_file_params.m_dRadius;
+			g_dXY_S1 = (pow(g_dXY_Wm, 2) - pow(g_dXY_Ws, 2)) / (2.0 * dAlpha);
+			g_dXY_S2 = 0.0;
+			g_dXY_S3 = g_dXY_ThetaDis - g_dXY_S1 - g_dXY_S2;
+			g_dXY_T1 = 2.0 * g_dXY_S1 / (g_dXY_Ws + g_dXY_Wm);
+			g_dXY_T2 = 0.0;
+			g_dXY_T3 = 2.0 * g_dXY_S3 / (g_dXY_We + g_dXY_Wm);
+			g_dXY_Ttotal = g_dXY_T1 + g_dXY_T2 + g_dXY_T3;
+		}
+	}
+	else
+	{
+		g_u32LEDout |= 0x02;
+
+		g_dXY_Wm = dW;
+		g_dXY_Vm = dSpeed;
+		g_dXY_T1 = 2.0 * g_dXY_S1 / (g_dXY_Ws + g_dXY_Wm);
+		g_dXY_T2 = g_dXY_S2 / g_dXY_Wm;
+		g_dXY_T3 = 2.0 * g_dXY_S3 / (g_dXY_We + g_dXY_Wm);
+		g_dXY_Ttotal = g_dXY_T1 + g_dXY_T2 + g_dXY_T3;
+	}
+}
+
+int GetArcPathCmdPos(double dSpeed, double dAcc)
+{
+	double dW = dSpeed / g_cmd_file_params.m_dRadius;
+	double dAlpha = dAcc / g_cmd_file_params.m_dRadius;
+	
+	g_dXY_Time += g_dt;
+	if (g_dXY_Time <= g_dXY_T1)
+	{
+		g_dXY_V = g_dXY_Vs + dAcc * g_dXY_Time;
+		g_dXY_S = g_dXY_Ws * g_dXY_Time + 0.5 * dAlpha * pow(g_dXY_Time, 2);
+	}
+	else if (g_dXY_Time > g_dXY_T1 && g_dXY_Time <= g_dXY_T1 + g_dXY_T2)
+	{
+		g_dXY_V = dSpeed;
+		g_dXY_S = g_dXY_S1 + dW * (g_dXY_Time - g_dXY_T1);
+	}
+	else if (g_dXY_Time > g_dXY_T1 + g_dXY_T2 && g_dXY_Time <= g_dXY_Ttotal)
+	{
+		g_dXY_V = g_dXY_Vm - dAcc * (g_dXY_Time - g_dXY_T1 - g_dXY_T2);
+		g_dXY_S = g_dXY_S1 + g_dXY_S2 + g_dXY_Wm * (g_dXY_Time - g_dXY_T1 - g_dXY_T2) - 0.5 * dAlpha * pow((g_dXY_Time - g_dXY_T1 - g_dXY_T2), 2);
+	}
+	else
+	{
+		g_dXY_V = g_dXY_Ve;
+		g_Position_Params[0].m_dCmdPos = g_cmd_file_params.m_dEndPos[0];
+		g_Position_Params[1].m_dCmdPos = g_cmd_file_params.m_dEndPos[1];
+		return 0;
+	}
+
+	if (g_cmd_file_params.m_dArcDir >= 0.0) // Counterclockwise
+	{
+		g_Position_Params[0].m_dCmdPos = g_cmd_file_params.m_dCenPos[0] + g_cmd_file_params.m_dRadius * cos(g_dXY_Theta_s + g_dXY_S);
+		g_Position_Params[1].m_dCmdPos = g_cmd_file_params.m_dCenPos[1] + g_cmd_file_params.m_dRadius * sin(g_dXY_Theta_s + g_dXY_S);
+	}
+	else // Clockwise
+	{
+		g_Position_Params[0].m_dCmdPos = g_cmd_file_params.m_dCenPos[0] + g_cmd_file_params.m_dRadius * cos(g_dXY_Theta_s - g_dXY_S);
+		g_Position_Params[1].m_dCmdPos = g_cmd_file_params.m_dCenPos[1] + g_cmd_file_params.m_dRadius * sin(g_dXY_Theta_s - g_dXY_S);
+	}
+
+	return 1;
+}
+
+int CheckTheta(int iIndex)
+{
+	double dCosTheta;
+	double dX2, dX1, dX0;
+	double dY2, dY1, dY0;
+	double dXY_DisNext;
+	
+	if (g_CmdBuf[iIndex % 100 + 1].m_iID == LINEXY || g_CmdBuf[iIndex % 100 + 1].m_iID == FLINEXY)
+	{
+		dX0 = g_cmd_file_params.m_dBegPos[0];
+		dX1 = g_cmd_file_params.m_dEndPos[0];
+		dX2 = g_CmdBuf[iIndex % 100 + 1].m_dParams[0];
+		dY0 = g_cmd_file_params.m_dBegPos[1];
+		dY1 = g_cmd_file_params.m_dEndPos[1];
+		dY2 = g_CmdBuf[iIndex % 100 + 1].m_dParams[1];
+		dXY_DisNext = sqrt(pow(dX2 - dX1, 2) + pow(dY2 - dY1, 2));
+		if (dXY_DisNext != 0)
+		{
+			dCosTheta = ((dX1 - dX0) * (dX2 - dX1) + (dY1 - dY0) * (dY2 - dY1)) / (dXY_DisNext * g_dXY_Dis);
+			if (dCosTheta > cos(g_dThetaMax * PI / 180.0))
+			{
+				if (g_CmdBuf[iIndex % 100].m_iID == LINEXY)
+				{
+					g_dXY_Ve = g_cmd_file_params.m_dSpeed;
+					if (g_CmdBuf[iIndex % 100 + 1].m_iID == FLINEXY)
+					{
+						CheckVend(dXY_DisNext, g_cmd_file_params.m_dFAcc);
+					}
+					else
+					{
+						CheckVend(dXY_DisNext, g_cmd_file_params.m_dAcc);
+					}
+				}
+				else
+				{
+					if (g_CmdBuf[iIndex % 100 + 1].m_iID == LINEXY)
+					{
+						g_dXY_Ve = g_cmd_file_params.m_dSpeed;
+						CheckVend(dXY_DisNext, g_cmd_file_params.m_dAcc);
+					}
+					else
+					{
+						g_dXY_Ve = g_cmd_file_params.m_dFSpeed;
+						CheckVend(dXY_DisNext, g_cmd_file_params.m_dFAcc);
+					}
+				}
+				return 1;
+			}
+		}
+		else
+		{
+			iIndex++;
+			return CheckTheta(iIndex);
+		}
+	}
+	// else if (g_CmdBuf[iIndex % 100 + 1].m_iID == ARCXY || g_CmdBuf[iIndex % 100 + 1].m_iID == FARCXY)
+	// {
+
+	// }
+
+	g_dXY_Ve = 0.0;
+	return 0;
+}
+
 void SetNextCmd()
 {
 	g_cmd_file_params.m_dBegPos[0] = g_CmdBuf[g_iFileCmdIndex % 100].m_dParams[0];
@@ -222,6 +490,37 @@ void SetNextCmd()
 	g_dXY_V = 0.0;
 	g_dXY_Vs = g_dXY_Ve;
 	g_iFileCmdIndex++;
+}
+
+void InitParams(int iAxis)
+{
+	g_dVel[iAxis] = 0.0;
+	g_dTime[iAxis] = 0.0;
+	g_dS[iAxis] = 0.0;
+	g_bStopFlag[iAxis] = false;
+	g_bHomingFlag[iAxis] = false;
+	g_iCnt[iAxis] = 5;
+	g_bRunFileFlag = false;
+	g_iFileCmdIndex = 0;
+	g_dXY_V = 0.0;
+	g_dXY_Dis = 0.0;
+	g_dXY_S = 0.0;
+	g_dXY_Vm = 0.0;
+	g_dXY_S1 = 0.0;
+	g_dXY_S2 = 0.0;
+	g_dXY_S3 = 0.0;
+	g_dXY_T1 = 0.0;
+	g_dXY_T2 = 0.0;
+	g_dXY_T3 = 0.0;
+	g_dXY_Ttotal = 0.0;
+	g_dXY_Vs = 0.0;
+	g_dXY_Ve = 0.0;
+	g_dXY_Time = 0.0;
+	g_dXY_Theta_s = 0.0;
+	g_dXY_Theta_e = 0.0;
+	g_dXY_ThetaDis = 0.0;
+	g_dXY_Ws = 0.0;
+	g_dXY_We = 0.0;
 }
 
 void ECM_intr_Handler(void *CallBackRef)
@@ -276,28 +575,24 @@ void ECM_intr_Handler(void *CallBackRef)
 						g_dXY_Vs = 0.0;
 						g_dXY_Ve = 0.0;
 						SetNextCmd();
-						g_Position_Params[0].m_dCmdPos = g_cmd_file_params.m_dBegPos[0];
-						g_Position_Params[1].m_dCmdPos = g_cmd_file_params.m_dBegPos[1];
+						GetBegParams();
 						break;
 					}
 					case SPEED:
 					{
-						g_cmd_file_params.m_dSpeed = CurCmd.m_dParams[0];
-						g_cmd_file_params.m_dFSpeed = CurCmd.m_dParams[1];
+						GetSpeedParams();
 						g_iFileCmdIndex++;
 						break;
 					}	
 					case ACC:
 					{
-						g_cmd_file_params.m_dAcc = CurCmd.m_dParams[0];
-						g_cmd_file_params.m_dFAcc = CurCmd.m_dParams[1];
+						GetAccParams();
 						g_iFileCmdIndex++;
 						break;
 					}
 					case LINEXY:
 					{
-						g_cmd_file_params.m_dEndPos[0] = CurCmd.m_dParams[0];
-						g_cmd_file_params.m_dEndPos[1] = CurCmd.m_dParams[1];
+						GetLineParams();
 						nret = CalDistance();
 						if (nret <= 0)
 						{
@@ -319,10 +614,7 @@ void ECM_intr_Handler(void *CallBackRef)
 					}
 					case FLINEXY:
 					{
-						g_u32LEDout |= 0x02;
-
-						g_cmd_file_params.m_dEndPos[0] = CurCmd.m_dParams[0];
-						g_cmd_file_params.m_dEndPos[1] = CurCmd.m_dParams[1];
+						GetLineParams();
 						nret = CalDistance();
 						if (nret <= 0)
 						{
@@ -342,9 +634,63 @@ void ECM_intr_Handler(void *CallBackRef)
 						}
 						break;
 					}
+					case ARCXY:
+					{						
+						GetArcParams();
+						nret = CalRadius();
+						if (nret <= 0)
+						{
+							SetNextCmd();
+							break;
+						}
+
+						nret = CalArcThetaDis();
+						if (nret <= 0)
+						{
+							SetNextCmd();
+							break;
+						}
+						
+						// CheckTheta(g_iFileCmdIndex);
+						g_dXY_Ve = 0.0;
+						GetArcPathParams(g_cmd_file_params.m_dSpeed, g_cmd_file_params.m_dAcc);
+						nret = GetArcPathCmdPos(g_cmd_file_params.m_dSpeed, g_cmd_file_params.m_dAcc);
+						if (nret <= 0)
+						{
+							SetNextCmd();
+						}
+						break;
+					}
+					case FARCXY:
+					{
+						GetArcParams();
+						nret = CalRadius();
+						if (nret <= 0)
+						{
+							SetNextCmd();
+							break;
+						}
+
+						nret = CalArcThetaDis();
+						if (nret <= 0)
+						{
+							SetNextCmd();
+							break;
+						}
+						
+						// CheckTheta(g_iFileCmdIndex);
+						g_dXY_Ve = 0.0;
+						GetArcPathParams(g_cmd_file_params.m_dFSpeed, g_cmd_file_params.m_dFAcc);
+						nret = GetArcPathCmdPos(g_cmd_file_params.m_dFSpeed, g_cmd_file_params.m_dFAcc);
+						if (nret <= 0)
+						{
+							SetNextCmd();
+						}
+						break;
+					}
 					case END:
 					{
-						g_u32LEDout &= 0xfffffffd;
+						// g_u32LEDout &= 0xfffffffd;
 
 						g_bRunFileFlag = false;
 						g_Position_Params[0].m_uMode = MODE_IDLE;
@@ -366,14 +712,7 @@ void ECM_intr_Handler(void *CallBackRef)
 				{
 					case MODE_IDLE:
 					{
-						g_dVel[i] = 0.0;
-						g_dTime[i] = 0.0;
-						g_dS[i] = 0.0;
-						g_bStopFlag[i] = false;
-						g_bHomingFlag[i] = false;
-						g_iCnt[i] = 5;
-						g_bRunFileFlag = false;
-						g_iFileCmdIndex = 0;
+						InitParams(i);
 
 						g_pRxPDOData[i].u16CtlWord = 0x000f;
 						break;
@@ -420,32 +759,7 @@ void ECM_intr_Handler(void *CallBackRef)
 
 						if (!g_bStopFlag[i])
 						{
-							g_dTime[i] += g_dt;
-							if (g_dTime[i] <= g_dT1[i])
-							{
-								g_dVel[i] = g_Motion_Params[i].m_dMotionAcc * g_dTime[i];
-								g_dS[i] = 0.5 * g_Motion_Params[i].m_dMotionAcc * pow(g_dTime[i], 2);
-								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
-							}
-							else if (g_dTime[i] > g_dT1[i] && g_dTime[i] <= g_dT1[i] + g_dT2[i])
-							{
-								g_dVel[i] = g_Motion_Params[i].m_dMotionSpeed;
-								g_dS[i] = g_dS1[i] + g_Motion_Params[i].m_dMotionSpeed * (g_dTime[i] - g_dT1[i]);
-								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
-							}
-							else if (g_dTime[i] > g_dT1[i] + g_dT2[i] && g_dTime[i] <= g_dTtotal[i])
-							{
-								g_dVel[i] = g_dVm[i] - g_Motion_Params[i].m_dMotionAcc * (g_dTime[i] - g_dT1[i] - g_dT2[i]);
-								g_dS[i] = g_dS1[i] + g_dS2[i] + g_dVm[i] * (g_dTime[i] - g_dT1[i] - g_dT2[i]) - 0.5 * g_Motion_Params[i].m_dMotionAcc * pow((g_dTime[i] - g_dT1[i] - g_dT2[i]), 2);
-								g_Position_Params[i].m_dCmdPos = g_dStartPos[i] + g_dS[i] * g_dDirection[i];
-							}
-							else
-							{
-								g_dVel[i] = 0.0;
-								g_Position_Params[i].m_dCmdPos = g_Position_Params[i].m_dTarPos;
-								g_Position_Params[i].m_uMode = MODE_IDLE;
-								g_bBeginPosFlag[i] = true;
-							}
+							GetCmdPos_Motion(i);
 						}
 						else // Stop
 						{	

@@ -41,6 +41,7 @@ int g_iFileCmdIndex;
 
 double g_dXY_V, g_dXY_Dis, g_dXY_S, g_dXY_Vm, g_dXY_S1, g_dXY_S2, g_dXY_S3, g_dXY_T1, g_dXY_T2, g_dXY_T3, g_dXY_Ttotal, g_dXY_Vs, g_dXY_Ve, g_dXY_Time;
 double g_dThetaMax;
+double g_dXY_Theta_s, g_dXY_Theta_e, g_dXY_ThetaDis, g_dXY_Ws, g_dXY_We, g_dXY_Wm;
 
 u32 g_u32LEDout;
 u16 g_u16JF8out;
@@ -124,6 +125,10 @@ void InitParameters()
 	g_cmd_file_params.m_dEndPos[1] = 0.0;
 	g_cmd_file_params.m_dRatio[0] = 0.0;
 	g_cmd_file_params.m_dRatio[1] = 0.0;
+	g_cmd_file_params.m_dCenPos[0] = 0.0;
+	g_cmd_file_params.m_dCenPos[1] = 0.0;
+	g_cmd_file_params.m_dRadius = 0.0;
+	g_cmd_file_params.m_dArcDir = 0.0;
 	g_cmd_file_params.m_dSpeed = 0.0;
 	g_cmd_file_params.m_dFSpeed = 0.0;
 	g_cmd_file_params.m_dAcc = 0.0;
@@ -133,10 +138,38 @@ void InitParameters()
 	g_bBeginPosFlag[0] = false;
 	g_bBeginPosFlag[1] = false;
 	g_iFileCmdIndex = 0;
+
+	g_dXY_V = 0.0;
+	g_dXY_Dis = 0.0;
+	g_dXY_S = 0.0;
+	g_dXY_Vm = 0.0;
+	g_dXY_S1 = 0.0;
+	g_dXY_S2 = 0.0;
+	g_dXY_S3 = 0.0;
+	g_dXY_T1 = 0.0;
+	g_dXY_T2 = 0.0;
+	g_dXY_T3 = 0.0;
+	g_dXY_Ttotal = 0.0;
+	g_dXY_Vs = 0.0;
+	g_dXY_Ve = 0.0;
+	g_dXY_Time = 0.0;
+	g_dXY_Theta_s = 0.0;
+	g_dXY_Theta_e = 0.0;
+	g_dXY_ThetaDis = 0.0;
+	g_dXY_Ws = 0.0;
+	g_dXY_We = 0.0;
+	g_dXY_Wm = 0.0;
+
 	g_dThetaMax = 15.0;
 
 	g_u32LEDout = 0;
 	g_u16JF8out = 0;
+}
+
+void LEDout()
+{
+	g_u32LEDout ^= 0x01;
+	Xil_Out32(IO_ADDR_LEDOUT, g_u32LEDout);
 }
 
 int main()
@@ -146,9 +179,9 @@ int main()
 	SetupInterruptSystem();
 
 	while(1)
-	{
-		g_u32LEDout ^= 0x01;
-		Xil_Out32(IO_ADDR_LEDOUT, g_u32LEDout);
+	{	
+		LEDout();
+
 		GetAppCmd();
 	}
 

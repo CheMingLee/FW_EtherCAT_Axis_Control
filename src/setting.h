@@ -85,6 +85,9 @@ typedef struct cmd_file_params{
 	double m_dBegPos[2];
 	double m_dEndPos[2];
 	double m_dRatio[2];
+	double m_dCenPos[2];
+	double m_dRadius;
+	double m_dArcDir;
 	double m_dSpeed;
 	double m_dFSpeed;
 	double m_dAcc;
@@ -152,6 +155,7 @@ extern int g_iFileCmdIndex;
 
 extern double g_dXY_V, g_dXY_Dis, g_dXY_S, g_dXY_Vm, g_dXY_S1, g_dXY_S2, g_dXY_S3, g_dXY_T1, g_dXY_T2, g_dXY_T3, g_dXY_Ttotal, g_dXY_Vs, g_dXY_Ve, g_dXY_Time;
 extern double g_dThetaMax;
+extern double g_dXY_Theta_s, g_dXY_Theta_e, g_dXY_ThetaDis, g_dXY_Ws, g_dXY_We, g_dXY_Wm;
 
 extern u32 g_u32LEDout;
 extern u16 g_u16JF8out;
