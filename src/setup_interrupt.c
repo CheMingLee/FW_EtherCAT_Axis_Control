@@ -187,8 +187,8 @@ int GetPathCmdPos(double dSpeed, double dAcc)
 	g_dXY_Time += g_dt;
 	if (g_dXY_Time <= g_dXY_T1)
 	{
-		g_dXY_V = dAcc * g_dXY_Time;
-		g_dXY_S = 0.5 * dAcc * pow(g_dXY_Time, 2);
+		g_dXY_V = g_dXY_Vs + dAcc * g_dXY_Time;
+		g_dXY_S = g_dXY_Vs * g_dXY_Time + 0.5 * dAcc * pow(g_dXY_Time, 2);
 	}
 	else if (g_dXY_Time > g_dXY_T1 && g_dXY_Time <= g_dXY_T1 + g_dXY_T2)
 	{
@@ -202,7 +202,7 @@ int GetPathCmdPos(double dSpeed, double dAcc)
 	}
 	else
 	{
-		g_dXY_V = 0.0;
+		g_dXY_V = g_dXY_Ve;
 		g_Position_Params[0].m_dCmdPos = g_cmd_file_params.m_dEndPos[0];
 		g_Position_Params[1].m_dCmdPos = g_cmd_file_params.m_dEndPos[1];
 		return 0;
