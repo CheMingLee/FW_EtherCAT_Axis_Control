@@ -364,8 +364,6 @@ void GetArcPathParams(double dSpeed, double dAcc)
 	}
 	else
 	{
-		g_u32LEDout |= 0x02;
-
 		g_dXY_Wm = dW;
 		g_dXY_Vm = dSpeed;
 		g_dXY_T1 = 2.0 * g_dXY_S1 / (g_dXY_Ws + g_dXY_Wm);
@@ -383,6 +381,8 @@ int GetArcPathCmdPos(double dSpeed, double dAcc)
 	g_dXY_Time += g_dt;
 	if (g_dXY_Time <= g_dXY_T1)
 	{
+		g_u32LEDout |= 0x02;
+
 		g_dXY_V = g_dXY_Vs + dAcc * g_dXY_Time;
 		g_dXY_S = g_dXY_Ws * g_dXY_Time + 0.5 * dAlpha * pow(g_dXY_Time, 2);
 	}
