@@ -333,6 +333,21 @@ void GetAppCmd()
 				g_CmdBuf[iIndex] = CmdBuf;
 				break;
 			}
+			case CMD_SET_RUNFILE_LIM_ANG:
+			{
+				double dTheta;
+
+				memcpy(&dTheta, pData, 8);
+				g_dThetaMax = dTheta;
+				break;
+			}
+			case CMD_GET_RUNFILE_LIM_ANG:
+			{
+				CmdGetToApp(usCmd, 8);
+				memcpy((void *)IO_ADDR_BRAM_OUT_DATA, &g_dThetaMax, 8);
+				SetFlagOutOne();
+				break;
+			}
 			default:
 				break;
 		}
