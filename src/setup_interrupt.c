@@ -1,4 +1,7 @@
 #include "setting.h"
+#include <stdio.h>
+#define min(a,b) (((a)<(b))?(a):(b))
+#define max(a,b) (((a)>(b))?(a):(b))
 
 int GetCmdPos_Acc_Jog(double dSpeed, double dAcc, int iAxis)
 {
@@ -247,7 +250,7 @@ int CalArcThetaDis()
 	}
 
 	double dX1, dX0, dXc, dY1, dY0, dYc, dR;
-	double dSinThetaS, dThetaS, dSinThetaE, dThetaE;
+	double dSinThetaS, dThetaS, dSinThetaE, dThetaE, dCosThetaS, dCosThetaE;
 
 	dX1 = g_cmd_file_params.m_dEndPos[0];
 	dX0 = g_cmd_file_params.m_dBegPos[0];
@@ -259,10 +262,16 @@ int CalArcThetaDis()
 	dSinThetaS = (dY0 - dYc) / dR;
 	dSinThetaE = (dY1 - dYc) / dR;
 
-	dThetaS = acos((dX0 - dXc) / dR); // range is [0, PI]
+	dCosThetaS = (dX0 - dXc) / dR;
+	dCosThetaE = (dX1 - dXc) / dR;
+
+	dCosThetaS = min(max(dCosThetaS,-1),1);
+	dCosThetaE = min(max(dCosThetaE,-1),1);
+
+	dThetaS = acos(dCosThetaS); // range is [0, PI]
 	g_dXY_Theta_s = ChangeThetaRange(dSinThetaS, dThetaS); // range is [0, 2*PI]
 	
-	dThetaE = acos((dX1 - dXc) / dR); // range is [0, PI]
+	dThetaE = acos(dCosThetaE); // range is [0, PI]
 	g_dXY_Theta_e = ChangeThetaRange(dSinThetaE, dThetaE); // range is [0, 2*PI]
 
 	if (g_cmd_file_params.m_dArcDir >= 0.0) // Counterclockwise
